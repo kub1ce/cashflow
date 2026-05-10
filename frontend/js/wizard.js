@@ -1,4 +1,7 @@
-// ── Данные по умолчанию ────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// ДАННЫЕ
+// ══════════════════════════════════════════════════════════════
+
 const DEFAULT_CATEGORIES = {
   income: [
     { name: 'Зарплата',         color_code: '#22c55e' },
@@ -18,147 +21,137 @@ const DEFAULT_CATEGORIES = {
   ],
 };
 
-// ── Состояние мастера ──────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// СОСТОЯНИЕ
+// ══════════════════════════════════════════════════════════════
+
 const state = {
   currentStep: 1,
-  totalSteps: 4,
+  totalSteps:  4,
 
   account: {
-    name: '',
+    name:            '',
     initial_balance: 0,
   },
 
   settings: {
     planning_start_date: '',
-    planning_end_date: '',
-    financial_strategy: 'manual',
+    financial_strategy:  'manual',
   },
 
-  // id выбранных категорий (индексы в DEFAULT_CATEGORIES)
   selectedCategories: {
-    income: new Set([0, 1]),       // Зарплата, Фриланс
-    expense: new Set([0, 1, 2]),   // Продукты, Транспорт, Коммунальные
+    income:  new Set([0, 1]),
+    expense: new Set([0, 1, 2]),
   },
 };
 
-// ── Утилиты ────────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// УТИЛИТЫ
+// ══════════════════════════════════════════════════════════════
+
+const STEP_TITLES = {
+  1: 'Основной счёт',
+  2: 'Период планирования',
+  3: 'Стратегия кассовых разрывов',
+  4: 'Категории по умолчанию',
+};
+
 function showError(msg) {
-  const el = document.getElementById('error-msg');
+  const el = document.getElementById('error-banner');
   el.textContent = msg;
   el.classList.remove('hidden');
   setTimeout(() => el.classList.add('hidden'), 4000);
 }
 
 function hideError() {
-  document.getElementById('error-msg').classList.add('hidden');
+  document.getElementById('error-banner').classList.add('hidden');
 }
 
-function getMondayOfWeek(date) {
-  const d = new Date(date);
+function getMondayISO(dateStr) {
+  const d   = new Date(dateStr + 'T00:00:00');
   const day = d.getDay();
-  const diff = (day === 0) ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  return d;
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+  return d.toISOString().split('T')[0];
 }
 
-function formatDate(date) {
-  return date.toISOString().split('T')[0];
-}
+// ══════════════════════════════════════════════════════════════
+// ОБНОВЛЕНИЕ UI
+// ══════════════════════════════════════════════════════════════
 
-// ── Обновление индикатора шагов ────────────────────────────────────────────────
-function updateStepIndicator(step) {
-  document.querySelectorAll('.step-dot').forEach((dot, idx) => {
-    const dotStep = idx + 1;
-    dot.classList.remove('active', 'done');
-    if (dotStep < step)  dot.classList.add('done');
-    if (dotStep === step) dot.classList.add('active');
+function updateUI(step) {
+  // Шаги
+  document.querySelectorAll('.wizard-step').forEach(el => {
+    el.classList.add('hidden');
   });
-
-  document.querySelectorAll('.step-line').forEach((line, idx) => {
-    line.classList.toggle('done', idx + 1 < step);
-  });
-}
-
-// ── Показ нужного шага ─────────────────────────────────────────────────────────
-function showStep(step) {
-  document.querySelectorAll('.wizard-step').forEach(el => el.classList.add('hidden'));
   document.getElementById(`step-${step}`).classList.remove('hidden');
 
-  const btnBack = document.getElementById('btn-back');
+  // Заголовок
+  document.getElementById('step-header-title').textContent =
+    STEP_TITLES[step] || '';
+
+  // Кнопка Назад
+  document.getElementById('btn-back')
+    .classList.toggle('hidden', step === 1);
+
+  // Кнопка Далее/Готово
   const btnNext = document.getElementById('btn-next');
-
-  btnBack.classList.toggle('hidden', step === 1);
-  btnNext.textContent = (step === state.totalSteps) ? '✓ Готово' : 'Далее →';
-
-  updateStepIndicator(step);
-}
-
-// ── Валидация шагов ────────────────────────────────────────────────────────────
-function validateStep(step) {
-  if (step === 1) {
-    const name = document.getElementById('account-name').value.trim();
-    if (!name) { showError('Введите название счёта'); return false; }
-    state.account.name            = name;
-    state.account.initial_balance =
-      parseFloat(document.getElementById('account-balance').value) || 0;
-    return true;
-  }
-  if (step === 2) {
-    const start = document.getElementById('period-start').value;
-    if (!start) { showError('Укажите дату начала периода'); return false; }
-    state.settings.planning_start_date = start;
-    return true;
-  }
-  if (step === 3) return true;
-  if (step === 4) {
-    const total =
-      state.selectedCategories.income.size +
-      state.selectedCategories.expense.size;
-    if (total === 0) { showError('Выберите хотя бы одну категорию'); return false; }
-    return true;
-  }
-  return true;
-}
-
-// ── Подсчёт недель ─────────────────────────────────────────────────────────────
-function updateWeeksHint() {
-  const start = document.getElementById('period-start').value;
-  const end   = document.getElementById('period-end').value;
-  const hint  = document.getElementById('weeks-hint');
-
-  if (start && end && start < end) {
-    const ms    = new Date(end) - new Date(start);
-    const weeks = Math.ceil(ms / (7 * 24 * 60 * 60 * 1000));
-    document.getElementById('weeks-count').textContent = weeks;
-    hint.classList.remove('hidden');
+  if (step === state.totalSteps) {
+    btnNext.textContent = '✓ Готово';
+    btnNext.style.background = '#059669';
   } else {
-    hint.classList.add('hidden');
+    btnNext.textContent = 'Далее →';
+    btnNext.style.background = '';
   }
+
+  // Сайдбар
+  for (let i = 1; i <= state.totalSteps; i++) {
+    const el = document.getElementById(`sidebar-step-${i}`);
+    el.classList.remove('active', 'done');
+    if (i < step)  el.classList.add('done');
+    if (i === step) el.classList.add('active');
+  }
+
+  // Рендерим категории при переходе на шаг 4
+  if (step === 4) renderCategories();
 }
 
-// ── Рендер категорий ───────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// СТРАТЕГИЯ
+// ══════════════════════════════════════════════════════════════
+
+function selectStrategy(btn) {
+  document.querySelectorAll('.strategy-card').forEach(b => {
+    b.classList.remove('active');
+  });
+  btn.classList.add('active');
+  state.settings.financial_strategy = btn.dataset.value;
+}
+
+// ══════════════════════════════════════════════════════════════
+// КАТЕГОРИИ
+// ══════════════════════════════════════════════════════════════
+
 function renderCategories() {
   ['income', 'expense'].forEach(type => {
     const container = document.getElementById(`${type}-categories`);
     container.innerHTML = '';
 
     DEFAULT_CATEGORIES[type].forEach((cat, idx) => {
-      const isSelected = state.selectedCategories[type].has(idx);
-      const card = document.createElement('div');
-      card.className = `category-card ${isSelected ? 'selected' : ''}`;
-      card.dataset.idx  = idx;
-      card.dataset.type = type;
+      const selected = state.selectedCategories[type].has(idx);
+      const card     = document.createElement('div');
+      card.className = `cat-card${selected ? ' selected' : ''}`;
 
       card.innerHTML = `
-        <div class="color-dot" style="background:${cat.color_code}"></div>
-        <span class="text-sm text-slate-700">${cat.name}</span>
-        <div class="check-icon">
-          <svg class="w-3 h-3 ${isSelected ? '' : 'hidden'}"
-               fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+        <div class="w-2.5 h-2.5 rounded-full flex-shrink-0"
+             style="background:${cat.color_code}"></div>
+        <span class="text-sm text-slate-700 font-medium">${cat.name}</span>
+        <div class="cat-check">
+          <svg class="w-2.5 h-2.5 text-white ${selected ? '' : 'hidden'}"
+               fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" stroke-width="3">
             <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
           </svg>
-        </div>
-      `;
+        </div>`;
 
       card.addEventListener('click', () => toggleCategory(type, idx, card));
       container.appendChild(card);
@@ -172,8 +165,6 @@ function toggleCategory(type, idx, card) {
     set.delete(idx);
     card.classList.remove('selected');
     card.querySelector('svg').classList.add('hidden');
-    card.querySelector('.check-icon').style.background   = '';
-    card.querySelector('.check-icon').style.borderColor  = '';
   } else {
     set.add(idx);
     card.classList.add('selected');
@@ -181,20 +172,96 @@ function toggleCategory(type, idx, card) {
   }
 }
 
-// ── Сохранение и переход к таблице ────────────────────────────────────────────
-async function finish() {
-  const categories = [];
+// ══════════════════════════════════════════════════════════════
+// ВАЛИДАЦИЯ
+// ══════════════════════════════════════════════════════════════
 
-  let incomeOrder = 0;
+function validateStep(step) {
+  if (step === 1) {
+    const name = document.getElementById('account-name').value.trim();
+    if (!name) { showError('Введите название счёта'); return false; }
+    state.account.name            = name;
+    state.account.initial_balance =
+      parseFloat(document.getElementById('account-balance').value) || 0;
+    return true;
+  }
+
+  if (step === 2) {
+    const start = document.getElementById('period-start').value;
+    if (!start) { showError('Укажите дату начала периода'); return false; }
+    state.settings.planning_start_date = getMondayISO(start);
+    return true;
+  }
+
+  if (step === 3) {
+    // Стратегия сохраняется по клику
+    return true;
+  }
+
+  if (step === 4) {
+    const total =
+      state.selectedCategories.income.size +
+      state.selectedCategories.expense.size;
+    if (total === 0) {
+      showError('Выберите хотя бы одну категорию');
+      return false;
+    }
+    return true;
+  }
+
+  return true;
+}
+
+// ══════════════════════════════════════════════════════════════
+// НАВИГАЦИЯ
+// ══════════════════════════════════════════════════════════════
+
+function wizardNext() {
+  hideError();
+  if (!validateStep(state.currentStep)) return;
+
+  if (state.currentStep === state.totalSteps) {
+    finish();
+    return;
+  }
+
+  state.currentStep++;
+  updateUI(state.currentStep);
+}
+
+function wizardBack() {
+  hideError();
+  if (state.currentStep <= 1) return;
+  state.currentStep--;
+  updateUI(state.currentStep);
+}
+
+// ══════════════════════════════════════════════════════════════
+// СОХРАНЕНИЕ
+// ══════════════════════════════════════════════════════════════
+
+async function finish() {
+  const btn = document.getElementById('btn-next');
+  btn.disabled    = true;
+  btn.textContent = 'Сохраняю...';
+
+  const categories = [];
+  let order = 0;
+
   state.selectedCategories.income.forEach(idx => {
-    const cat = DEFAULT_CATEGORIES.income[idx];
-    categories.push({ ...cat, type: 'income', sort_order: incomeOrder++ });
+    categories.push({
+      ...DEFAULT_CATEGORIES.income[idx],
+      type:       'income',
+      sort_order: order++,
+    });
   });
 
-  let expenseOrder = 0;
   state.selectedCategories.expense.forEach(idx => {
-    const cat = DEFAULT_CATEGORIES.expense[idx];
-    categories.push({ ...cat, type: 'expense', sort_order: expenseOrder++ });
+    categories.push({
+      ...DEFAULT_CATEGORIES.expense[idx],
+      type:       'expense',
+      sort_order: order++,
+    });
   });
 
   const payload = {
@@ -204,79 +271,48 @@ async function finish() {
   };
 
   try {
+    // Ждём готовности pywebview
+    await new Promise(resolve => {
+      if (window.pywebview) resolve();
+      else window.addEventListener('pywebviewready', resolve, { once: true });
+    });
+
     const result = await pywebview.api.save_wizard_data(payload);
-    if (result.success) {
-      await pywebview.api.navigate_to('index.html');
+
+    if (result && result.success) {
+      // Небольшая задержка перед навигацией
+      btn.textContent = '✓ Готово!';
+      setTimeout(async () => {
+        await pywebview.api.navigate_to('index.html');
+      }, 300);
     } else {
-      showError('Ошибка сохранения: ' + result.error);
+      showError('Ошибка: ' + (result?.error || 'неизвестная ошибка'));
+      btn.disabled    = false;
+      btn.textContent = '✓ Готово';
     }
   } catch (e) {
-    showError('Не удалось подключиться к приложению: ' + e.toString());
+    showError('Ошибка соединения: ' + e.toString());
+    btn.disabled    = false;
+    btn.textContent = '✓ Готово';
   }
 }
 
-// ── Навигация ──────────────────────────────────────────────────────────────────
-document.getElementById('btn-next').addEventListener('click', async () => {
-  hideError();
-  if (!validateStep(state.currentStep)) return;
+// ══════════════════════════════════════════════════════════════
+// ИНИЦИАЛИЗАЦИЯ
+// ══════════════════════════════════════════════════════════════
 
-  if (state.currentStep === state.totalSteps) {
-    await finish();
-    return;
-  }
-
-  state.currentStep++;
-  showStep(state.currentStep);
-
-  // Рендерим категории когда доходим до шага 4
-  if (state.currentStep === 4) renderCategories();
-});
-
-document.getElementById('btn-back').addEventListener('click', () => {
-  hideError();
-  state.currentStep--;
-  showStep(state.currentStep);
-});
-
-// ── Обработчики полей ──────────────────────────────────────────────────────────
-
-// Тип счёта
-document.getElementById('account-type-group').addEventListener('click', e => {
-  const btn = e.target.closest('.type-btn');
-  if (!btn) return;
-  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  state.account.type = btn.dataset.value;
-});
-
-// Стратегия
-document.getElementById('strategy-group').addEventListener('click', e => {
-  const btn = e.target.closest('.strategy-btn');
-  if (!btn) return;
-  document.querySelectorAll('.strategy-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  state.settings.financial_strategy = btn.dataset.value;
-});
-
-// Подсчёт недель при изменении дат
-document.getElementById('period-start').addEventListener('change', updateWeeksHint);
-document.getElementById('period-end').addEventListener('change',   updateWeeksHint);
-
-// ── Предзаполнение дат (текущий год, понедельники) ─────────────────────────────
-(function setDefaultDates() {
-  const today    = new Date();
-  const year     = today.getFullYear();
-  const monday   = getMondayOfWeek(new Date(year, 0, 1));  // первый пн года
-  const lastDay  = new Date(year, 11, 31);
-  const lastMon  = getMondayOfWeek(lastDay);
-  // конец последней недели = воскресенье
-  const lastSun  = new Date(lastMon);
-  lastSun.setDate(lastSun.getDate() + 6);
-
-  document.getElementById('period-start').value = formatDate(monday);
-  document.getElementById('period-end').value   = formatDate(lastSun);
-  updateWeeksHint();
+// Предустанавливаем дату начала = первый понедельник текущего года
+(function setDefaultDate() {
+  const today = new Date();
+  const year  = today.getFullYear();
+  const jan1  = new Date(year, 0, 1);
+  // Первый понедельник года
+  const day   = jan1.getDay();
+  const diff  = day === 0 ? 1 : day === 1 ? 0 : 8 - day;
+  jan1.setDate(jan1.getDate() + diff);
+  document.getElementById('period-start').value =
+    jan1.toISOString().split('T')[0];
 })();
 
-// ── Старт ──────────────────────────────────────────────────────────────────────
-showStep(1);
+// Показываем первый шаг
+updateUI(1);

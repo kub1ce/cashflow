@@ -1441,32 +1441,42 @@ async function handleImport() {
 
 function scrollToWeek(dateStr) {
   if (!dateStr || !App.data) return;
-  const monday = getMondayOf(dateStr);
 
-  // Ищем ближайшую неделю
-  let targetWeek = App.data.weeks.find(w => w.week_start === monday);
+  // Нормализуем: убираем время
+  const target = dateStr.slice(0, 10);
+
+  // Ищем неделю в которую попадает выбранная дата
+  let targetWeek = App.data.weeks.find(w =>
+    target >= w.week_start && target <= w.week_end
+  );
+
+  // Если вне диапазона — снапаем к ближайшей неделе
   if (!targetWeek) {
-    // Снапаем к первой или последней
-    const t = new Date(dateStr).getTime();
-    const first = new Date(App.data.weeks[0].week_start).getTime();
-    targetWeek = t < first
-      ? App.data.weeks[0]
-      : App.data.weeks[App.data.weeks.length - 1];
+    const first = App.data.weeks[0];
+    const last  = App.data.weeks[App.data.weeks.length - 1];
+    targetWeek  = target < first.week_start ? first : last;
   }
 
-  const el        = document.getElementById(`week-col-${targetWeek.week_start}`);
   const container = document.getElementById('table-scroll-container');
-  if (el && container) {
-    const containerRect = container.getBoundingClientRect();
-    const elRect        = el.getBoundingClientRect();
-    const targetLeft    =
-      container.scrollLeft + (elRect.left - containerRect.left) - 280;
-    container.scrollTo({ left: targetLeft, behavior: 'smooth' });
-  }
+  const th        = document.getElementById(`week-col-${targetWeek.week_start}`);
+
+  if (!container || !th) return;
+
+  // th.offsetLeft уже учитывает sticky колонку (257px)
+  // Вычитаем ширину sticky чтобы колонка не спряталась за ней
+  const STICKY_WIDTH     = 257;
+  const targetScrollLeft = th.offsetLeft - STICKY_WIDTH;
+
+  container.scrollTo({
+    left:     Math.max(0, targetScrollLeft),
+    behavior: 'smooth',
+  });
 }
 
 document.getElementById('date-picker')
-  ?.addEventListener('change', e => scrollToWeek(e.target.value));
+  ?.addEventListener('change', e => {
+    if (e.target.value) scrollToWeek(e.target.value);
+  });
 
 // ══════════════════════════════════════════════════════════════
 // ПОДТВЕРЖДЕНИЕ
@@ -1578,11 +1588,12 @@ async function init() {
     else window.addEventListener('pywebviewready', resolve, { once: true });
   });
 
-  document.getElementById('date-picker').value = getTodayISO();
+  const today = getTodayISO();
+  document.getElementById('date-picker').value = today;
 
   await reloadData();
 
-  scrollToWeek(getTodayISO());
+  setTimeout(() => scrollToWeek(today), 150);
 
   document.getElementById('loader').classList.add('hidden');
 }
