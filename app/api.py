@@ -12,21 +12,22 @@ class API:
 
     def __init__(self):
         self._window = None
+        self._frontend_dir = None
 
     def set_window(self, window):
         self._window = window
 
+    def set_frontend_dir(self, frontend_dir: str):
+        self._frontend_dir = frontend_dir
+
     # ── Навигация ──────────────────────────────────────────────────────────────
     def navigate_to(self, page: str):
-        frontend_dir = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), '..', 'frontend'
-        )
-        path = os.path.normpath(os.path.join(frontend_dir, page))
+        path = os.path.normpath(os.path.join(self._frontend_dir, page))
         url  = 'file:///' + path.replace('\\', '/')
         # Запускаем в отдельном потоке чтобы не блокировать callback
         import threading
         threading.Timer(0.1, lambda: self._window.load_url(url)).start()
-        return {'success': True}  # ← обязательно возвращаем значение
+        return {'success': True}
 
     # ── Мастер первого запуска ─────────────────────────────────────────────────
     def save_wizard_data(self, data: dict) -> dict:
