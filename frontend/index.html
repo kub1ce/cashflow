@@ -17,563 +17,410 @@
     }
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
   <link rel="stylesheet" href="css/style.css"/>
 </head>
 
-<body class="bg-slate-100 font-sans h-screen flex flex-col overflow-hidden">
+<body class="flex h-screen w-full overflow-hidden font-sans bg-slate-50 text-slate-900">
 
-  <!-- ── Шапка приложения ───────────────────────────────────────────────────── -->
-  <header class="app-header flex-shrink-0 flex items-center justify-between px-6 py-3
-                 bg-white border-b border-slate-200 shadow-sm z-50">
+  <!-- ══════════════════════════════════════════════════════
+       SIDEBAR
+  ══════════════════════════════════════════════════════ -->
+  <aside class="w-60 bg-slate-900 text-white flex flex-col shrink-0">
 
-    <!-- Левая часть: логотип + название -->
-    <div class="flex items-center gap-3">
-      <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500">
-        <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24"
-             stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3
-               2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0
-               1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9
-               0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
+    <!-- Логотип -->
+    <div class="p-4 border-b border-slate-700">
+      <h1 class="text-sm font-bold uppercase tracking-widest text-slate-100">
+        Менеджер финансов
+      </h1>
+    </div>
+
+    <!-- Навигация -->
+    <nav class="flex-1 py-4 px-2 space-y-1">
+
+      <div class="text-[10px] uppercase text-slate-500 font-bold px-3 mb-2">
+        Обзор
       </div>
-      <span class="font-semibold text-slate-800 text-base">Cash Flow</span>
-    </div>
 
-    <!-- Центр: навигация к дате -->
-    <div class="flex items-center gap-3">
-      <label class="text-sm text-slate-500 font-medium">Перейти к неделе:</label>
-      <input
-        title="_"
-        type="date"
-        id="date-picker"
-        class="px-3 py-1.5 text-sm rounded-lg border border-slate-200
-               focus:outline-none focus:ring-2 focus:ring-emerald-400
-               focus:border-transparent text-slate-700 transition"
-      />
       <button
-        id="btn-today"
-        class="px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50
-               border border-emerald-200 rounded-lg hover:bg-emerald-100 transition"
+        id="nav-dashboard"
+        onclick="switchView('dashboard')"
+        class="nav-btn active w-full flex items-center space-x-3 px-3 py-2
+               rounded text-sm font-medium transition-colors"
       >
-        Сегодня
-      </button>
-    </div>
-
-    <!-- Правая часть: кнопки действий -->
-    <div class="flex items-center gap-2">
-
-      <!-- Сверка баланса -->
-      <button
-        id="btn-reconcile"
-        class="flex items-center gap-2 px-4 py-1.5 text-sm font-medium
-               text-slate-600 bg-white border border-slate-200 rounded-lg
-               hover:bg-slate-50 hover:border-slate-300 transition"
-        title="Сверка баланса"
-      >
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12
-               11h.01M15 11h.01M5 3h14a2 2 0 012 2v14a2 2 0
-               01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/>
+        <!-- icon: LayoutDashboard -->
+        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
+          <rect x="14" y="14" width="7" height="7" rx="1"/>
         </svg>
-        Сверка
+        <span>Таблица</span>
       </button>
 
-      <!-- Настройки -->
       <button
-        id="btn-settings"
-        class="flex items-center justify-center w-8 h-8 text-slate-500
-               hover:text-slate-700 hover:bg-slate-100 rounded-lg transition"
-        title="Настройки"
+        id="nav-settings"
+        onclick="switchView('settings')"
+        class="nav-btn w-full flex items-center space-x-3 px-3 py-2
+               rounded text-sm font-medium transition-colors text-slate-300
+               hover:bg-slate-800"
       >
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <!-- icon: Settings -->
+        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round"
-            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35
-               0a1.724 1.724 0 002.573 1.066c1.543-.94
-               3.31.826 2.37 2.37a1.724 1.724 0
-               001.065 2.572c1.756.426 1.756 2.924 0
-               3.35a1.724 1.724 0 00-1.066 2.573c.94
-               1.543-.826 3.31-2.37 2.37a1.724 1.724 0
-               00-2.572 1.065c-.426 1.756-2.924 1.756-3.35
-               0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31
-               -.826-2.37-2.37a1.724 1.724 0
-               00-1.065-2.572c-1.756-.426-1.756-2.924
-               0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543
-               .826-3.31 2.37-2.37.996.608 2.296.07
-               2.572-1.065z"/>
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0
+               002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0
+               001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0
+               00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724
+               0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724
+               1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724
+               1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724
+               1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608
+               2.296.07 2.572-1.065z"/>
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
         </svg>
+        <span>Настройки приложения</span>
       </button>
 
-    </div>
-  </header>
-
-  <!-- ── Основная область: таблица ──────────────────────────────────────────── -->
-  <main class="flex-1 overflow-hidden relative">
-
-    <!-- Лоадер -->
-    <div id="loader"
-         class="absolute inset-0 flex items-center justify-center bg-slate-100 z-40">
-      <div class="flex flex-col items-center gap-3">
-        <div class="w-8 h-8 border-2 border-emerald-500 border-t-transparent
-                    rounded-full animate-spin"></div>
-        <span class="text-sm text-slate-500">Загрузка данных...</span>
+      <div class="text-[10px] uppercase text-slate-500 font-bold px-3 mt-6 mb-2">
+        Инструменты
       </div>
-    </div>
 
-    <!-- Обёртка таблицы со скроллом -->
-    <div id="table-scroll-container"
-         class="absolute inset-0 overflow-auto">
+      <button
+        onclick="openReconcileModal()"
+        class="nav-btn w-full flex items-center space-x-3 px-3 py-2
+               rounded text-sm font-medium transition-colors text-slate-300
+               hover:bg-slate-800"
+      >
+        <!-- icon: RefreshCw -->
+        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M23 4v6h-6M1 20v-6h6"/>
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0
+               0020.49 15"/>
+        </svg>
+        <span>Сверка баланса</span>
+      </button>
 
-      <table id="cashflow-table" class="cashflow-table border-separate border-spacing-0">
-        <thead id="table-head"></thead>
-        <tbody id="table-body"></tbody>
-      </table>
+    </nav>
+  </aside>
+
+  <!-- ══════════════════════════════════════════════════════
+       MAIN CONTENT
+  ══════════════════════════════════════════════════════ -->
+  <main class="flex-1 flex flex-col min-w-0">
+
+    <!-- Header -->
+    <header class="h-16 bg-white border-b border-slate-200 flex items-center
+                   justify-between px-6 shrink-0">
+      <h2 id="view-title"
+          class="text-lg font-bold text-slate-800">
+        Таблица планирования
+      </h2>
+
+      <!-- Date picker (только для таблицы) -->
+      <div id="header-datepicker"
+           class="flex items-center space-x-3">
+        <span class="text-xs uppercase font-bold text-slate-500">
+          Перейти к дате:
+        </span>
+        <input
+          title="_"
+          type="date"
+          id="date-picker"
+          class="text-sm border border-slate-300 rounded px-3 py-1.5
+                 outline-none focus:ring-1 focus:ring-blue-500 bg-white
+                 text-slate-700 font-mono shadow-sm"
+        />
+      </div>
+    </header>
+
+    <!-- Views -->
+    <div class="flex-1 overflow-hidden flex flex-col">
+
+      <!-- Dashboard view -->
+      <div id="view-dashboard" class="flex-1 overflow-hidden flex flex-col">
+
+        <!-- Лоадер -->
+        <div id="loader"
+             class="absolute inset-0 flex items-center justify-center
+                    bg-slate-50 z-40">
+          <div class="flex flex-col items-center gap-3">
+            <div class="w-8 h-8 border-2 border-blue-500 border-t-transparent
+                        rounded-full animate-spin"></div>
+            <span class="text-sm text-slate-500">Загрузка данных...</span>
+          </div>
+        </div>
+
+        <!-- Таблица -->
+        <div class="flex-1 m-4 min-h-0 bg-white rounded-lg shadow-sm
+                    border border-slate-200 flex flex-col overflow-hidden">
+
+          <!-- Toolbar таблицы -->
+          <div class="flex justify-end items-center p-3 border-b border-slate-200
+                      shrink-0 bg-slate-50">
+          </div>
+
+          <!-- Скролл контейнер -->
+          <div id="table-scroll-container"
+               class="flex-1 overflow-auto">
+            <table id="cashflow-table"
+                   class="cashflow-table w-full text-sm font-sans
+                          tabular-nums border-collapse bg-white">
+              <thead id="table-head"
+                     class="bg-slate-100 sticky top-0 z-20 shadow-sm">
+              </thead>
+              <tbody id="table-body"></tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Settings view -->
+      <div id="view-settings"
+           class="hidden flex-1 overflow-auto bg-slate-50 p-6">
+        <div class="max-w-4xl mx-auto space-y-6" id="settings-content">
+          <!-- Заполняется JS -->
+        </div>
+      </div>
 
     </div>
   </main>
 
-  <!-- ── Popover: ввод суммы ────────────────────────────────────────────────── -->
-  <div id="cell-popover" class="cell-popover hidden">
-    <div class="popover-header">
-      <span id="popover-title" class="text-xs font-semibold text-slate-500 uppercase tracking-wide"></span>
-      <button title="enter sum" id="popover-close" class="popover-close-btn">
-        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
-      </button>
-    </div>
+  <!-- ══════════════════════════════════════════════════════
+       МОДАЛКИ
+  ══════════════════════════════════════════════════════ -->
 
-    <!-- Переключатель План/Факт -->
-    <div class="flex gap-1 mb-3 p-1 bg-slate-100 rounded-lg">
-      <button class="popover-tab active" data-mode="plan">План</button>
-      <button class="popover-tab" data-mode="fact">Факт</button>
-    </div>
-
-    <!-- Поле суммы -->
-    <div class="relative mb-3">
-      <input
-        type="number"
-        id="popover-amount"
-        placeholder="0"
-        min="0"
-        class="w-full px-3 py-2 pr-8 text-sm rounded-lg border border-slate-200
-               focus:outline-none focus:ring-2 focus:ring-emerald-400
-               focus:border-transparent font-mono tabular-nums"
-      />
-      <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">₽</span>
-    </div>
-
-    <!-- Кнопки -->
-    <div class="flex gap-2">
-      <button id="popover-clear"
-              class="flex-1 px-3 py-1.5 text-xs font-medium text-slate-500
-                     border border-slate-200 rounded-lg hover:bg-slate-50 transition">
-        Очистить
-      </button>
-      <button id="popover-save"
-              class="flex-1 px-3 py-1.5 text-xs font-medium text-white
-                     bg-emerald-500 rounded-lg hover:bg-emerald-600 transition">
-        Сохранить
-      </button>
+  <!-- Дефицит (займ) -->
+  <div id="deficit-modal"
+       class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm
+              items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+      <header class="px-6 py-4 border-b border-slate-100 flex items-center
+                     justify-between">
+        <h2 class="text-lg font-semibold text-slate-800">
+          Дата возврата займа
+        </h2>
+        <button title="_" onclick="closeDeficitModal()"
+                class="p-1 text-slate-400 hover:text-slate-600 rounded transition">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </header>
+      <div class="p-6 space-y-4">
+        <p class="text-sm text-slate-600 leading-relaxed">
+          Покрытие разрыва в размере
+          <strong id="deficit-amount-display" class="text-rose-600"></strong>.
+          Укажите дату возврата:
+        </p>
+        <input
+          title="_"
+          type="date"
+          id="deficit-return-date"
+          class="w-full border border-slate-200 rounded p-3 text-sm
+                 focus:ring-2 focus:ring-blue-500 outline-none"
+        />
+      </div>
+      <div class="px-6 py-4 bg-slate-50 border-t border-slate-100
+                  flex justify-end space-x-3">
+        <button onclick="closeDeficitModal()"
+                class="px-4 py-2 text-sm font-medium text-slate-700 bg-white
+                       border border-slate-300 rounded hover:bg-slate-50 transition">
+          Отмена
+        </button>
+        <button onclick="submitDeficit()"
+                class="px-4 py-2 text-sm font-medium text-white bg-blue-600
+                       rounded hover:bg-blue-700 transition">
+          Подтвердить
+        </button>
+      </div>
     </div>
   </div>
 
-  <!-- ── Затемнение для popover ─────────────────────────────────────────────── -->
-  <div id="popover-overlay" class="hidden fixed inset-0 z-20"></div>
-
-
-    <!-- ── Модальное окно AutoFill ────────────────────────────────────────────── -->
-  <div id="autofill-modal" class="modal-overlay hidden">
-    <div class="modal-box w-full max-w-sm">
-
-      <!-- Заголовок -->
-      <div class="modal-header">
-        <div class="flex items-center gap-2">
-          <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-100">
-            <svg class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24"
-                 stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0
-                   012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0
-                   00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-            </svg>
-          </div>
-          <div>
-            <h3 class="font-semibold text-slate-800 text-sm">Автозаполнение</h3>
-            <p id="autofill-cat-name"
-               class="text-xs text-slate-500"></p>
-          </div>
-        </div>
-        <button title="close autofill" class="modal-close-btn" onclick="closeAutofillModal()">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-               stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+  <!-- Сверка баланса -->
+  <div id="reconcile-modal"
+       class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm
+              items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden
+                flex flex-col max-h-[90vh]">
+      <header class="px-6 py-4 border-b border-slate-100 flex items-center
+                     justify-between shrink-0">
+        <h2 class="text-lg font-semibold text-slate-800">Сверка баланса</h2>
+        <button title="_" type="button" onclick="closeReconcileModal()"
+                class="p-1 text-slate-400 hover:text-slate-600 rounded transition">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M6 18L18 6M6 6l12 12"/>
           </svg>
         </button>
-      </div>
+      </header>
+      <div class="p-6 overflow-y-auto space-y-5">
 
-      <!-- Тело -->
-      <div class="modal-body space-y-4">
-
-        <!-- Начальная дата -->
         <div>
-          <label class="modal-label">Начальная дата</label>
+          <label class="block text-xs font-medium text-slate-700 mb-1">
+            Дата сверки
+          </label>
+          <input
+            title="_"
+            type="date"
+            id="reconcile-date"
+            class="w-full max-w-[200px] border border-slate-300 rounded px-3
+                   py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+
+        <div class="p-4 bg-slate-50 rounded-lg border border-slate-100">
+          <div class="text-xs font-medium text-slate-500 mb-1">
+            Расчётный баланс (по таблице)
+          </div>
+          <div id="reconcile-calculated"
+               class="text-2xl font-bold text-slate-800 font-mono">—</div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1">
+            Фактический остаток на счёте
+          </label>
+          <input
+            type="number"
+            id="reconcile-actual"
+            placeholder="0"
+            class="w-full border border-slate-300 rounded px-3 py-2 text-sm
+                   text-right outline-none focus:ring-1 focus:ring-blue-500
+                   font-mono"
+          />
+        </div>
+
+        <div id="reconcile-diff-preview" class="hidden"></div>
+
+      </div>
+      <div class="px-6 py-4 bg-slate-50 border-t border-slate-100
+                  flex justify-end space-x-3 shrink-0">
+        <button onclick="closeReconcileModal()"
+                class="px-4 py-2 text-sm font-medium text-slate-700 bg-white
+                       border border-slate-300 rounded hover:bg-slate-50 transition">
+          Отмена
+        </button>
+        <button onclick="submitReconcile()"
+                class="px-4 py-2 text-sm font-medium text-white bg-blue-600
+                       rounded hover:bg-blue-700 transition flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
+          Уравнять
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AutoFill -->
+  <div id="autofill-modal"
+       class="fixed inset-0 bg-slate-900/50 items-center justify-center
+              z-50 p-4 hidden">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-100 flex justify-between
+                  items-center bg-slate-50">
+        <h3 class="font-bold text-slate-800 text-sm">
+          Автозаполнение:
+          <span id="autofill-cat-name" class="text-blue-600"></span>
+        </h3>
+        <button onclick="closeAutofillModal()"
+                class="text-slate-400 hover:text-slate-600 text-xl
+                       font-bold leading-none">&times;</button>
+      </div>
+      <div class="p-5 space-y-4">
+        <div>
+          <label class="block tracking-wide uppercase text-slate-500
+                        text-[10px] font-bold mb-1">
+            Начальная дата
+          </label>
           <input
             title="_"
             type="date"
             id="autofill-start-date"
-            class="modal-input"
+            class="w-full border border-slate-200 rounded p-2 text-sm
+                   outline-none focus:ring-1 focus:ring-blue-500 bg-slate-50"
           />
-          <p class="text-xs text-slate-400 mt-1">
-            Заполнение начнётся с понедельника этой недели
-          </p>
+          <p id="autofill-week-hint"
+             class="text-[10px] text-slate-500 mt-1 hidden"></p>
         </div>
-
-        <!-- Количество недель -->
         <div>
-          <label class="modal-label">Количество недель</label>
-          <div class="flex items-center gap-2">
-            <button type="button" class="weeks-counter-btn" onclick="changeWeeksCount(-1)">−</button>
-            <input
-              title="_"
-              type="number"
-              id="autofill-weeks"
-              value="4"
-              min="1"
-              max="52"
-              class="modal-input text-center"
-              style="width: 80px; flex-shrink: 0;"
-            />
-            <button class="weeks-counter-btn" onclick="changeWeeksCount(1)">+</button>
-            <span class="text-sm text-slate-500">нед.</span>
-          </div>
+          <label class="block tracking-wide uppercase text-slate-500
+                        text-[10px] font-bold mb-1">
+            Количество недель
+          </label>
+          <input
+            title="_"
+            type="number"
+            id="autofill-weeks"
+            min="1" max="52"
+            value="12"
+            class="w-full border border-slate-200 rounded p-2 text-sm
+                   outline-none focus:ring-1 focus:ring-blue-500 bg-slate-50"
+          />
         </div>
-
-        <!-- Сумма -->
         <div>
-          <label class="modal-label">Сумма (план)</label>
-          <div class="relative">
-            <input
-              type="number"
-              id="autofill-amount"
-              placeholder="0"
-              min="0"
-              class="modal-input pr-8 font-mono"
-            />
-            <span class="absolute right-3 top-1/2 -translate-y-1/2
-                         text-slate-400 text-xs">₽</span>
-          </div>
+          <label class="block tracking-wide uppercase text-slate-500
+                        text-[10px] font-bold mb-1">
+            Сумма (План)
+          </label>
+          <input
+            type="number"
+            id="autofill-amount"
+            placeholder="0.00"
+            class="w-full border border-slate-200 rounded p-2 text-sm
+                   outline-none focus:ring-1 focus:ring-blue-500 bg-slate-50
+                   font-mono"
+          />
         </div>
-
-        <!-- Превью -->
-        <div id="autofill-preview"
-             class="hidden px-3 py-2.5 bg-emerald-50 border border-emerald-100
-                    rounded-xl text-xs text-emerald-700">
-        </div>
-
-      </div>
-
-      <!-- Футер -->
-      <div class="modal-footer">
-        <button class="btn-secondary" onclick="closeAutofillModal()">Отмена</button>
-        <button class="btn-primary" onclick="submitAutofill()">
+        <button
+          onclick="submitAutofill()"
+          class="w-full bg-blue-600 text-white font-bold text-xs uppercase
+                 tracking-wide py-3 rounded hover:bg-blue-700 transition"
+        >
           Заполнить
         </button>
       </div>
-
     </div>
   </div>
 
-    <!-- ── Модалка: Кассовый разрыв (кредитка) ───────────────────────────────── -->
-  <div id="deficit-modal" class="modal-overlay hidden">
-    <div class="modal-box w-full max-w-sm">
-
-      <div class="modal-header">
-        <div class="flex items-center gap-2">
-          <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-rose-100">
-            <span class="text-lg">💳</span>
-          </div>
-          <div>
-            <h3 class="font-semibold text-slate-800 text-sm">Покрытие займом</h3>
-            <p class="text-xs text-slate-500">Укажите дату возврата</p>
-          </div>
-        </div>
-        <button title="close deficit modal" class="modal-close-btn" onclick="closeDeficitModal()">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-               stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
+  <!-- Confirm dialog -->
+  <div id="confirm-dialog"
+       class="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm
+              items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-xs overflow-hidden">
+      <div class="p-6 text-center">
+        <div class="text-3xl mb-3">⚠️</div>
+        <h3 id="confirm-title"
+            class="font-semibold text-slate-800 text-sm mb-1"></h3>
+        <p id="confirm-subtitle"
+           class="text-xs text-slate-500"></p>
+      </div>
+      <div class="px-6 py-4 bg-slate-50 border-t border-slate-100
+                  flex justify-center gap-3">
+        <button id="confirm-cancel"
+                class="px-4 py-2 text-sm font-medium text-slate-700 bg-white
+                       border border-slate-300 rounded hover:bg-slate-50">
+          Отмена
+        </button>
+        <button id="confirm-ok"
+                class="px-4 py-2 text-sm font-medium text-white bg-red-500
+                       rounded hover:bg-red-600">
+          Удалить
         </button>
       </div>
-
-      <div class="modal-body space-y-4">
-
-        <!-- Сумма дефицита -->
-        <div class="px-4 py-3 bg-rose-50 border border-rose-100 rounded-xl">
-          <p class="text-xs text-rose-600 font-medium mb-0.5">Сумма дефицита</p>
-          <p id="deficit-amount-display"
-             class="text-2xl font-bold text-rose-700 font-mono tabular-nums"></p>
-        </div>
-
-        <!-- Дата возврата -->
-        <div>
-          <label class="modal-label">Дата возврата займа</label>
-          <input
-            title="_"
-            type="date"
-            id="deficit-return-date"
-            class="modal-input"
-          />
-          <p class="text-xs text-slate-400 mt-1">
-            Расход «Возврат займа» будет добавлен на неделю этой даты
-          </p>
-        </div>
-
-        <!-- Итог -->
-        <div id="deficit-result-preview"
-             class="hidden px-4 py-3 bg-amber-50 border border-amber-100
-                    rounded-xl text-xs text-amber-700">
-        </div>
-
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn-secondary" onclick="closeDeficitModal()">Отмена</button>
-        <button class="btn-primary" id="deficit-confirm-btn"
-                onclick="submitDeficit()"
-                style="background:#f59e0b;"
-                onmouseover="this.style.background='#d97706'"
-                onmouseout="this.style.background='#f59e0b'">
-          Подтвердить займ
-        </button>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ── Модалка: Сверка баланса ────────────────────────────────────────────── -->
-  <div id="reconcile-modal" class="modal-overlay hidden">
-    <div class="modal-box w-full max-w-sm">
-
-      <div class="modal-header">
-        <div class="flex items-center gap-2">
-          <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-violet-100">
-            <svg class="w-4 h-4 text-violet-600" fill="none" viewBox="0 0 24 24"
-                 stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12
-                   11h.01M15 11h.01M5 3h14a2 2 0 012 2v14a2 2 0
-                   01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/>
-            </svg>
-          </div>
-          <div>
-            <h3 class="font-semibold text-slate-800 text-sm">Сверка баланса</h3>
-            <p class="text-xs text-slate-500">Введите реальный остаток на счёте</p>
-          </div>
-        </div>
-        <button title="cls rec modal" class="modal-close-btn" onclick="closeReconcileModal()">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-               stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
-      </div>
-
-      <div class="modal-body space-y-4">
-
-        <!-- Расчётный баланс -->
-        <div class="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl">
-          <p class="text-xs text-slate-500 font-medium mb-0.5">
-            Расчётный баланс (по таблице)
-          </p>
-          <p id="reconcile-calculated"
-             class="text-2xl font-bold text-slate-800 font-mono tabular-nums">
-            —
-          </p>
-        </div>
-
-        <!-- Фактический баланс -->
-        <div>
-          <label class="modal-label">Фактический баланс</label>
-          <div class="relative">
-            <input
-              type="number"
-              id="reconcile-actual"
-              placeholder="0"
-              class="modal-input pr-8 font-mono tabular-nums"
-            />
-            <span class="absolute right-3 top-1/2 -translate-y-1/2
-                         text-slate-400 text-xs">₽</span>
-          </div>
-        </div>
-
-        <!-- Превью разницы -->
-        <div id="reconcile-diff-preview" class="hidden"></div>
-
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn-secondary" onclick="closeReconcileModal()">Отмена</button>
-        <button class="btn-primary" id="reconcile-confirm-btn"
-                onclick="submitReconcile()">
-          Выровнять баланс
-        </button>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ── Модалка: Настройки ────────────────────────────────────────────────── -->
-  <div id="settings-modal" class="modal-overlay hidden">
-    <div class="modal-box w-full max-w-md">
-
-      <div class="modal-header">
-        <div class="flex items-center gap-2">
-          <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100">
-            <svg class="w-4 h-4 text-slate-600" fill="none" viewBox="0 0 24 24"
-                 stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724
-                   1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37
-                   2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756
-                   2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94
-                   1.543-.826 3.31-2.37 2.37a1.724 1.724 0
-                   00-2.572 1.065c-.426 1.756-2.924 1.756-3.35
-                   0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31
-                   -.826-2.37-2.37a1.724 1.724 0
-                   00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724
-                   1.724 0 001.066-2.573c-.94-1.543.826-3.31
-                   2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-            </svg>
-          </div>
-          <h3 class="font-semibold text-slate-800 text-sm">Настройки</h3>
-        </div>
-        <button title="_" class="modal-close-btn" onclick="closeSettingsModal()">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
-               stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-        </button>
-      </div>
-
-      <div class="modal-body space-y-5">
-
-        <!-- Период планирования -->
-        <div>
-          <p class="modal-label">Период планирования</p>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="text-xs text-slate-500 mb-1 block">Начало</label>
-              <input title="start" type="date" id="settings-start"
-                     class="modal-input"/>
-            </div>
-            <div>
-              <label class="text-xs text-slate-500 mb-1 block">Конец</label>
-              <input title="end" type="date" id="settings-end"
-                     class="modal-input"/>
-            </div>
-          </div>
-        </div>
-
-        <!-- Стратегия -->
-        <div>
-          <p class="modal-label">Стратегия кассовых разрывов</p>
-          <div class="space-y-2" id="settings-strategy-group">
-
-            <label class="settings-strategy-option">
-              <input type="radio" name="strategy" value="manual" class="sr-only"/>
-              <div class="strategy-radio-btn">
-                <span class="text-base">🖐️</span>
-                <div>
-                  <div class="text-sm font-medium text-slate-800">Ручное управление</div>
-                  <div class="text-xs text-slate-500">Только подсветка красным</div>
-                </div>
-              </div>
-            </label>
-
-            <label class="settings-strategy-option">
-              <input type="radio" name="strategy" value="saving_first" class="sr-only"/>
-              <div class="strategy-radio-btn">
-                <span class="text-base">🏦</span>
-                <div>
-                  <div class="text-sm font-medium text-slate-800">Приоритет «Копилка»</div>
-                  <div class="text-xs text-slate-500">Покрывать из накоплений</div>
-                </div>
-              </div>
-            </label>
-
-            <label class="settings-strategy-option">
-              <input type="radio" name="strategy" value="credit_first" class="sr-only"/>
-              <div class="strategy-radio-btn">
-                <span class="text-base">💳</span>
-                <div>
-                  <div class="text-sm font-medium text-slate-800">Приоритет «Кредитка»</div>
-                  <div class="text-xs text-slate-500">Займ с датой возврата</div>
-                </div>
-              </div>
-            </label>
-
-          </div>
-        </div>
-
-        <!-- Управление категориями -->
-        <div>
-          <p class="modal-label">Категории</p>
-          <div id="settings-categories-list" class="space-y-1.5 max-h-52 overflow-y-auto">
-            <!-- Заполняется JS -->
-          </div>
-          <button onclick="openAddCategoryForm()"
-                  class="mt-2 w-full flex items-center justify-center gap-2
-                         px-3 py-2 border border-dashed border-slate-300
-                         rounded-xl text-sm text-slate-500 hover:border-emerald-400
-                         hover:text-emerald-600 hover:bg-emerald-50 transition">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-            </svg>
-            Добавить категорию
-          </button>
-        </div>
-
-        <!-- Форма добавления категории (скрыта по умолчанию) -->
-        <div id="add-category-form" class="hidden p-4 bg-slate-50 rounded-xl space-y-3">
-          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-            Новая категория
-          </p>
-          <input type="text" id="new-cat-name" placeholder="Название"
-                 class="modal-input"/>
-          <div class="grid grid-cols-2 gap-2">
-            <select title="_" id="new-cat-type" class="modal-input">
-              <option value="income">Доход</option>
-              <option value="expense">Расход</option>
-            </select>
-            <div class="flex items-center gap-2">
-              <input title="_" type="color" id="new-cat-color" value="#10b981"
-                     class="w-10 h-9 rounded-lg border border-slate-200
-                            cursor-pointer p-0.5"/>
-              <span class="text-xs text-slate-500">Цвет</span>
-            </div>
-          </div>
-          <div class="flex gap-2">
-            <button class="btn-secondary flex-1 text-xs py-1.5"
-                    onclick="closeAddCategoryForm()">Отмена</button>
-            <button class="btn-primary flex-1 text-xs py-1.5"
-                    onclick="submitAddCategory()">Добавить</button>
-          </div>
-        </div>
-
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn-secondary" onclick="closeSettingsModal()">Отмена</button>
-        <button class="btn-primary" onclick="submitSettings()">Сохранить</button>
-      </div>
-
     </div>
   </div>
 

@@ -25,7 +25,6 @@ const state = {
 
   account: {
     name: '',
-    type: 'cash',
     initial_balance: 0,
   },
 
@@ -100,33 +99,24 @@ function validateStep(step) {
     const name = document.getElementById('account-name').value.trim();
     if (!name) { showError('Введите название счёта'); return false; }
     state.account.name            = name;
-    state.account.initial_balance = parseFloat(document.getElementById('account-balance').value) || 0;
+    state.account.initial_balance =
+      parseFloat(document.getElementById('account-balance').value) || 0;
     return true;
   }
-
   if (step === 2) {
     const start = document.getElementById('period-start').value;
-    const end   = document.getElementById('period-end').value;
-    if (!start || !end) { showError('Укажите обе даты периода'); return false; }
-    if (start >= end)   { showError('Дата начала должна быть раньше даты конца'); return false; }
+    if (!start) { showError('Укажите дату начала периода'); return false; }
     state.settings.planning_start_date = start;
-    state.settings.planning_end_date   = end;
     return true;
   }
-
-  if (step === 3) {
-    // стратегия уже сохраняется при клике
-    return true;
-  }
-
+  if (step === 3) return true;
   if (step === 4) {
-    const totalSelected =
+    const total =
       state.selectedCategories.income.size +
       state.selectedCategories.expense.size;
-    if (totalSelected === 0) { showError('Выберите хотя бы одну категорию'); return false; }
+    if (total === 0) { showError('Выберите хотя бы одну категорию'); return false; }
     return true;
   }
-
   return true;
 }
 

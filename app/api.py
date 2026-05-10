@@ -22,38 +22,55 @@ class API:
             os.path.dirname(os.path.abspath(__file__)), '..', 'frontend'
         )
         path = os.path.normpath(os.path.join(frontend_dir, page))
-        self._window.load_url(path)
+        url  = 'file:///' + path.replace('\\', '/')
+        # Запускаем в отдельном потоке чтобы не блокировать callback
+        import threading
+        threading.Timer(0.1, lambda: self._window.load_url(url)).start()
+        return {'success': True}  # ← обязательно возвращаем значение
 
-    # ── Мастер ────────────────────────────────────────────────────────────────
+    # ── Мастер первого запуска ─────────────────────────────────────────────────
     def save_wizard_data(self, data: dict) -> dict:
+        """
+        data = {
+            account:    { name, initial_balance },
+            settings:   { planning_start_date, financial_strategy },
+            categories: [ { name, type, color_code } ]
+        }
+        """
         db = SessionLocal()
         try:
-            account_data = data.get('account', {})
-            account = Account(
-                name=account_data.get('name', 'Основной счёт'),
-                type=account_data.get('type', 'cash'),
-                initial_balance=float(account_data.get('initial_balance', 0)),
+            # Счёт (без type)
+            acc_data = data.get('account', {})
+            account  = Account(
+                name            = acc_data.get('name', 'Основной счёт'),
+                initial_balance = float(acc_data.get('initial_balance', 0)),
             )
             db.add(account)
 
-            settings_data = data.get('settings', {})
+            # Настройки
+            s_data   = data.get('settings', {})
             settings = Settings(
-                planning_start_date=settings_data.get('planning_start_date'),
-                planning_end_date=settings_data.get('planning_end_date'),
-                financial_strategy=settings_data.get('financial_strategy', 'manual'),
-                visual_config=json.dumps({}),
+                planning_start_date = s_data.get('planning_start_date'),
+                financial_strategy  = s_data.get('financial_strategy', 'manual'),
+                visual_config       = json.dumps({
+                    'weekColor':            '#3b82f6',
+                    'currentWeekColor':     '#fef08a',
+                    'negativeBalanceColor': '#f87171',
+                    'totalIncomeColor':     '#16a34a',
+                    'totalExpenseColor':    '#ef4444',
+                }),
             )
             db.add(settings)
 
-            categories_data = data.get('categories', [])
-            for idx, cat in enumerate(categories_data):
-                category = Category(
-                    name=cat.get('name'),
-                    type=cat.get('type'),
-                    color_code=cat.get('color_code', '#94a3b8'),
-                    sort_order=idx,
-                )
-                db.add(category)
+            # Категории
+            for idx, cat in enumerate(data.get('categories', [])):
+                db.add(Category(
+                    name       = cat.get('name'),
+                    type       = cat.get('type'),
+                    color_code = cat.get('color_code', '#94a3b8'),
+                    sort_order = idx,
+                    is_custom  = False,   # дефолтные — не кастомные
+                ))
 
             db.commit()
             return {'success': True}
@@ -68,16 +85,45 @@ class API:
     def get_settings(self) -> dict:
         db = SessionLocal()
         try:
-            settings = db.query(Settings).first()
-            if not settings:
+            s = db.query(Settings).first()
+            if not s:
                 return {}
+            vc = json.loads(s.visual_config or '{}')
             return {
-                'id':                  settings.id,
-                'planning_start_date': settings.planning_start_date,
-                'planning_end_date':   settings.planning_end_date,
-                'financial_strategy':  settings.financial_strategy,
-                'visual_config':       json.loads(settings.visual_config or '{}'),
+                'id':                   s.id,
+                'planning_start_date':  s.planning_start_date,
+                'financial_strategy':   s.financial_strategy,
+                'visual_config':        vc,
             }
+        finally:
+            db.close()
+
+    def save_settings(self, data: dict) -> dict:
+        """
+        data = {
+            planning_start_date: 'YYYY-MM-DD',
+            financial_strategy:  'manual' | 'saving_first' | 'credit_first',
+            visual_config: { weekColor, currentWeekColor, ... }
+        }
+        """
+        db = SessionLocal()
+        try:
+            s = db.query(Settings).first()
+            if not s:
+                return {'success': False, 'error': 'Настройки не найдены'}
+
+            if 'planning_start_date' in data:
+                s.planning_start_date = data['planning_start_date']
+            if 'financial_strategy' in data:
+                s.financial_strategy = data['financial_strategy']
+            if 'visual_config' in data:
+                s.visual_config = json.dumps(data['visual_config'])
+
+            db.commit()
+            return {'success': True}
+        except Exception as e:
+            db.rollback()
+            return {'success': False, 'error': str(e)}
         finally:
             db.close()
 
@@ -86,69 +132,153 @@ class API:
         db = SessionLocal()
         try:
             cats = db.query(Category).order_by(Category.sort_order).all()
-            return [
-                {
-                    'id':         c.id,
-                    'name':       c.name,
-                    'type':       c.type,
-                    'color_code': c.color_code,
-                    'sort_order': c.sort_order,
-                }
-                for c in cats
-            ]
+            return [self._cat_to_dict(c) for c in cats]
         finally:
             db.close()
 
-    # ── Счета ─────────────────────────────────────────────────────────────────
-    def get_accounts(self) -> list:
+    def add_category(self, data: dict) -> dict:
         db = SessionLocal()
         try:
-            accounts = db.query(Account).all()
-            return [
-                {
-                    'id':              a.id,
-                    'name':            a.name,
-                    'type':            a.type,
-                    'initial_balance': a.initial_balance,
-                }
-                for a in accounts
-            ]
+            last = db.query(Category).filter(
+                Category.type == data.get('type')
+            ).order_by(Category.sort_order.desc()).first()
+            next_order = (last.sort_order + 1) if last else 0
+
+            cat = Category(
+                name       = data.get('name', 'Новая категория'),
+                type       = data.get('type', 'expense'),
+                color_code = data.get('color_code', '#94a3b8'),
+                sort_order = next_order,
+                is_custom  = True,
+            )
+            db.add(cat)
+            db.commit()
+            db.refresh(cat)
+            return {'success': True, 'category': self._cat_to_dict(cat)}
+        except Exception as e:
+            db.rollback()
+            return {'success': False, 'error': str(e)}
         finally:
             db.close()
 
-    # ── Главный метод: все данные для таблицы ─────────────────────────────────
+    def update_category(self, category_id: int, data: dict) -> dict:
+        """Обновляет name и/или color_code категории"""
+        db = SessionLocal()
+        try:
+            cat = db.query(Category).filter(
+                Category.id == int(category_id)
+            ).first()
+            if not cat:
+                return {'success': False, 'error': 'Категория не найдена'}
+
+            if 'name' in data:
+                cat.name = data['name']
+            if 'color_code' in data:
+                cat.color_code = data['color_code']
+
+            db.commit()
+            return {'success': True}
+        except Exception as e:
+            db.rollback()
+            return {'success': False, 'error': str(e)}
+        finally:
+            db.close()
+
+    def delete_category(self, category_id: int) -> dict:
+        db = SessionLocal()
+        try:
+            cat = db.query(Category).filter(
+                Category.id == int(category_id)
+            ).first()
+            if not cat:
+                return {'success': False, 'error': 'Категория не найдена'}
+
+            db.query(Plan).filter(Plan.category_id == int(category_id)).delete()
+            db.query(Fact).filter(Fact.category_id == int(category_id)).delete()
+            db.delete(cat)
+            db.commit()
+            return {'success': True}
+        except Exception as e:
+            db.rollback()
+            return {'success': False, 'error': str(e)}
+        finally:
+            db.close()
+
+    def update_category_order(self, ordered_ids: list) -> dict:
+        db = SessionLocal()
+        try:
+            for idx, cat_id in enumerate(ordered_ids):
+                cat = db.query(Category).filter(
+                    Category.id == int(cat_id)
+                ).first()
+                if cat:
+                    cat.sort_order = idx
+            db.commit()
+            return {'success': True}
+        except Exception as e:
+            db.rollback()
+            return {'success': False, 'error': str(e)}
+        finally:
+            db.close()
+
+    def _cat_to_dict(self, c) -> dict:
+        return {
+            'id':         c.id,
+            'name':       c.name,
+            'type':       c.type,
+            'color_code': c.color_code,
+            'sort_order': c.sort_order,
+            'is_custom':  bool(c.is_custom),
+        }
+
+    # ── Счёт ──────────────────────────────────────────────────────────────────
+    def get_account(self) -> dict:
+        db = SessionLocal()
+        try:
+            a = db.query(Account).first()
+            if not a:
+                return {}
+            return {'id': a.id, 'name': a.name, 'initial_balance': a.initial_balance}
+        finally:
+            db.close()
+
+    def update_account(self, data: dict) -> dict:
+        """data = { name?, initial_balance? }"""
+        db = SessionLocal()
+        try:
+            a = db.query(Account).first()
+            if not a:
+                return {'success': False, 'error': 'Счёт не найден'}
+            if 'name' in data:
+                a.name = data['name']
+            if 'initial_balance' in data:
+                a.initial_balance = float(data['initial_balance'])
+            db.commit()
+            return {'success': True}
+        except Exception as e:
+            db.rollback()
+            return {'success': False, 'error': str(e)}
+        finally:
+            db.close()
+
+    # ── Главный метод: данные для таблицы ─────────────────────────────────────
     def get_cashflow_data(self) -> dict:
         db = SessionLocal()
         try:
-            settings = db.query(Settings).first()
-            if not settings or not settings.planning_start_date:
+            s = db.query(Settings).first()
+            if not s or not s.planning_start_date:
                 return {'error': 'no_settings'}
 
-            weeks = self._generate_weeks(
-                settings.planning_start_date,
-                settings.planning_end_date,
-            )
+            weeks = self._generate_weeks(s.planning_start_date)
 
             cats = db.query(Category).order_by(Category.sort_order).all()
-            categories = [
-                {
-                    'id':         c.id,
-                    'name':       c.name,
-                    'type':       c.type,
-                    'color_code': c.color_code,
-                    'sort_order': c.sort_order,
-                }
-                for c in cats
-            ]
+            categories = [self._cat_to_dict(c) for c in cats]
 
             plans_raw = db.query(Plan).all()
             plans = {}
             for p in plans_raw:
                 key = f"{p.category_id}:{p.week_start_date}"
-                plans[key] = {
-                    'id':     p.id,
-                    'amount': p.amount,
-                }
+                plans[key] = {'id': p.id, 'amount': p.amount}
 
             facts_raw = db.query(Fact).all()
             facts = {}
@@ -163,43 +293,31 @@ class API:
                     'comment': f.comment,
                 })
 
-            account = db.query(Account).first()
-            initial_balance = account.initial_balance if account else 0.0
+            a = db.query(Account).first()
+            vc = json.loads(s.visual_config or '{}')
 
             return {
                 'weeks':           weeks,
                 'categories':      categories,
                 'plans':           plans,
                 'facts':           facts,
-                'initial_balance': initial_balance,
+                'initial_balance': a.initial_balance if a else 0.0,
                 'settings': {
-                    'financial_strategy':  settings.financial_strategy,
-                    'planning_start_date': settings.planning_start_date,
-                    'planning_end_date':   settings.planning_end_date,
+                    'financial_strategy':   s.financial_strategy,
+                    'planning_start_date':  s.planning_start_date,
+                    'visual_config':        vc,
                 },
             }
-
         finally:
             db.close()
 
-    # ── Сохранение ячейки (план или факт) ─────────────────────────────────────
+    # ── Сохранение ячейки ─────────────────────────────────────────────────────
     def save_cell(self, data: dict) -> dict:
         """
-        Сохраняет значение ячейки таблицы.
-
-        Ожидаемый data:
-        {
-            "category_id":     1,
-            "week_start_date": "2025-01-06",
-            "week_end_date":   "2025-01-12",
-            "amount":          5000.0,
-            "mode":            "plan"   # "plan" | "fact"
+        data = {
+            category_id, week_start_date, week_end_date,
+            amount, mode: 'plan'|'fact'
         }
-
-        Логика:
-        - mode == "plan": upsert в таблицу plans
-        - mode == "fact": upsert в таблицу facts
-        - amount == 0: удаляем запись (очистка ячейки)
         """
         db = SessionLocal()
         try:
@@ -216,7 +334,6 @@ class API:
 
             db.commit()
             return {'success': True}
-
         except Exception as e:
             db.rollback()
             return {'success': False, 'error': str(e)}
@@ -224,21 +341,18 @@ class API:
             db.close()
 
     def _upsert_plan(self, db, category_id, week_start_date, week_end_date, amount):
-        """Создаёт или обновляет плановую запись. При amount==0 удаляет."""
         existing = db.query(Plan).filter(
             and_(
                 Plan.category_id     == category_id,
                 Plan.week_start_date == week_start_date,
             )
         ).first()
-
         if amount == 0:
-            # Очистка: удаляем если есть
             if existing:
                 db.delete(existing)
         else:
             if existing:
-                existing.amount       = amount
+                existing.amount        = amount
                 existing.week_end_date = week_end_date
             else:
                 db.add(Plan(
@@ -249,13 +363,6 @@ class API:
                 ))
 
     def _upsert_fact(self, db, category_id, week_start_date, week_end_date, amount):
-        """
-        Создаёт или обновляет фактическую запись.
-        Логика: одна агрегированная запись факта на категорию+неделю
-        (без external_id — это ручной ввод).
-        При amount==0 удаляем.
-        """
-        # Ищем ручную запись (без external_id)
         existing = db.query(Fact).filter(
             and_(
                 Fact.category_id     == category_id,
@@ -263,10 +370,8 @@ class API:
                 Fact.external_id     == None,
             )
         ).first()
-
-        # Получаем account_id
-        account = db.query(Account).first()
-        account_id = account.id if account else 1
+        a          = db.query(Account).first()
+        account_id = a.id if a else 1
 
         if amount == 0:
             if existing:
@@ -274,9 +379,9 @@ class API:
         else:
             today = date.today().isoformat()
             if existing:
-                existing.amount       = amount
+                existing.amount        = amount
                 existing.week_end_date = week_end_date
-                existing.date         = today
+                existing.date          = today
             else:
                 db.add(Fact(
                     account_id      = account_id,
@@ -291,17 +396,6 @@ class API:
 
     # ── Автозаполнение ────────────────────────────────────────────────────────
     def autofill(self, data: dict) -> dict:
-        """
-        Заполняет указанную сумму как "План" на несколько недель вперёд.
-
-        Ожидаемый data:
-        {
-            "category_id":  1,
-            "start_date":   "2025-01-06",   # любая дата — берём понедельник её недели
-            "weeks_count":  12,
-            "amount":       50000.0
-        }
-        """
         db = SessionLocal()
         try:
             category_id = int(data['category_id'])
@@ -310,128 +404,28 @@ class API:
             amount      = float(data['amount'])
 
             if weeks_count <= 0:
-                return {'success': False, 'error': 'Количество недель должно быть > 0'}
+                return {'success': False, 'error': 'Количество недель > 0'}
             if amount < 0:
                 return {'success': False, 'error': 'Сумма не может быть отрицательной'}
 
-            # Приводим start_date к понедельнику
             week_start = self._get_monday(start_date)
-
             filled = 0
             for i in range(weeks_count):
-                current_start = week_start + timedelta(weeks=i)
-                current_end   = current_start + timedelta(days=6)
-
-                self._upsert_plan(
-                    db,
-                    category_id,
-                    current_start.isoformat(),
-                    current_end.isoformat(),
-                    amount,
-                )
+                cs = week_start + timedelta(weeks=i)
+                ce = cs + timedelta(days=6)
+                self._upsert_plan(db, category_id, cs.isoformat(), ce.isoformat(), amount)
                 filled += 1
 
             db.commit()
             return {'success': True, 'filled': filled}
-
         except Exception as e:
             db.rollback()
             return {'success': False, 'error': str(e)}
         finally:
             db.close()
-
-    # ── Обновление порядка категорий (drag-and-drop) ───────────────────────────
-    def update_category_order(self, ordered_ids: list) -> dict:
-        """
-        Принимает список id категорий в новом порядке,
-        обновляет sort_order для каждой.
-        """
-        db = SessionLocal()
-        try:
-            for idx, cat_id in enumerate(ordered_ids):
-                cat = db.query(Category).filter(Category.id == int(cat_id)).first()
-                if cat:
-                    cat.sort_order = idx
-            db.commit()
-            return {'success': True}
-        except Exception as e:
-            db.rollback()
-            return {'success': False, 'error': str(e)}
-        finally:
-            db.close()
-
-    # ── Вспомогательные методы ────────────────────────────────────────────────
-    def _get_monday(self, date_str: str) -> date:
-        """Возвращает понедельник недели для переданной даты"""
-        d = date.fromisoformat(date_str)
-        return d - timedelta(days=d.weekday())
-
-    def _generate_weeks(self, start_str: str, end_str: str) -> list:
-        MONTHS_RU = {
-            1: 'янв', 2: 'фев', 3: 'мар', 4: 'апр',
-            5: 'май', 6: 'июн', 7: 'июл', 8: 'авг',
-            9: 'сен', 10: 'окт', 11: 'ноя', 12: 'дек',
-        }
-
-        start = date.fromisoformat(start_str)
-        end   = date.fromisoformat(end_str)
-
-        if start.weekday() != 0:
-            start = start - timedelta(days=start.weekday())
-
-        weeks = []
-        current = start
-
-        while current <= end:
-            week_end = current + timedelta(days=6)
-
-            label = (
-                f"{current.day} {MONTHS_RU[current.month]}"
-                f" – "
-                f"{week_end.day} {MONTHS_RU[week_end.month]}"
-            )
-
-            current_year = date.today().year
-            if current.year != current_year:
-                label += f" {current.year}"
-
-            weeks.append({
-                'week_start': current.isoformat(),
-                'week_end':   week_end.isoformat(),
-                'label':      label,
-            })
-
-            current += timedelta(days=7)
-
-        return weeks
-
-    # ── Заглушки (следующие шаги) ─────────────────────────────────────────────
-    
 
     # ── Кассовый разрыв ───────────────────────────────────────────────────────
     def handle_deficit(self, data: dict) -> dict:
-        """
-        Обрабатывает кассовый разрыв согласно стратегии.
-
-        Ожидаемый data:
-        {
-            "week_start":    "2025-03-10",
-            "week_end":      "2025-03-16",
-            "deficit":       15000.0,
-            "strategy":      "saving_first" | "credit_first",
-            "return_date":   "2025-04-07"   # только для credit_first
-        }
-
-        Стратегия saving_first:
-            → добавляем доходную запись в плане на сумму дефицита
-              в категорию "Покрытие из копилки" (создаём если нет)
-
-        Стратегия credit_first:
-            → добавляем доходную запись в плане на сумму дефицита
-              в категорию "Займ" (создаём если нет)
-            → добавляем расходную запись в плане на return_date
-              в категорию "Возврат займа" (создаём если нет)
-        """
         db = SessionLocal()
         try:
             week_start  = data['week_start']
@@ -441,49 +435,34 @@ class API:
             return_date = data.get('return_date')
 
             if strategy == 'saving_first':
-                # Получаем или создаём системную категорию
                 cat = self._get_or_create_system_category(
-                    db,
-                    name='Покрытие из копилки',
-                    cat_type='income',
-                    color_code='#0ea5e9',
+                    db, 'Покрытие из копилки', 'income', '#0ea5e9'
                 )
                 self._upsert_plan(db, cat.id, week_start, week_end, deficit)
 
             elif strategy == 'credit_first':
                 if not return_date:
-                    return {'success': False, 'error': 'Укажите дату возврата займа'}
+                    return {'success': False, 'error': 'Укажите дату возврата'}
 
-                # 1. Займ: доход на текущей неделе
                 loan_cat = self._get_or_create_system_category(
-                    db,
-                    name='Займ',
-                    cat_type='income',
-                    color_code='#f59e0b',
+                    db, 'Займ', 'income', '#f59e0b'
                 )
                 self._upsert_plan(db, loan_cat.id, week_start, week_end, deficit)
 
-                # 2. Возврат займа: расход на неделе возврата
                 return_monday = self._get_monday(return_date)
                 return_sunday = return_monday + timedelta(days=6)
-
-                return_cat = self._get_or_create_system_category(
-                    db,
-                    name='Возврат займа',
-                    cat_type='expense',
-                    color_code='#ef4444',
+                return_cat    = self._get_or_create_system_category(
+                    db, 'Возврат займа', 'expense', '#ef4444'
                 )
 
-                # Суммируем с уже существующим возвратом (может быть несколько займов)
-                existing_return = db.query(Plan).filter(
+                existing = db.query(Plan).filter(
                     and_(
                         Plan.category_id     == return_cat.id,
                         Plan.week_start_date == return_monday.isoformat(),
                     )
                 ).first()
-
-                if existing_return:
-                    existing_return.amount += deficit
+                if existing:
+                    existing.amount += deficit
                 else:
                     db.add(Plan(
                         category_id     = return_cat.id,
@@ -491,220 +470,331 @@ class API:
                         week_end_date   = return_sunday.isoformat(),
                         amount          = deficit,
                     ))
-
             else:
                 return {'success': False, 'error': 'Неизвестная стратегия'}
 
             db.commit()
             return {'success': True}
-
         except Exception as e:
             db.rollback()
             return {'success': False, 'error': str(e)}
         finally:
             db.close()
 
-    def _get_or_create_system_category(
-        self, db, name: str, cat_type: str, color_code: str
-    ):
-        """Возвращает системную категорию по имени или создаёт её"""
-        cat = db.query(Category).filter(Category.name == name).first()
-        if not cat:
-            last = db.query(Category).filter(
-                Category.type == cat_type
-            ).order_by(Category.sort_order.desc()).first()
-            next_order = (last.sort_order + 1) if last else 0
-
-            cat = Category(
-                name       = name,
-                type       = cat_type,
-                color_code = color_code,
-                sort_order = next_order,
-            )
-            db.add(cat)
-            db.flush()  # чтобы получить id без commit
-        return cat
-
     # ── Сверка баланса ────────────────────────────────────────────────────────
     def reconcile_balance(self, data: dict) -> dict:
         """
-        Сверяет фактический баланс с расчётным.
-
-        Ожидаемый data:
-        {
-            "actual_balance":   125000.0,
-            "calculated_balance": 118000.0,
-            "week_start":       "2025-03-10",
-            "week_end":         "2025-03-16"
+        data = {
+            actual_balance:      float,
+            calculated_balance:  float,
+            week_start:          str,
+            week_end:            str,
         }
-
-        Логика:
-        - Если actual > calculated → создаём доход "Корректировка баланса"
-        - Если actual < calculated → создаём расход "Корректировка баланса"
-        - Разница проводится как факт в текущую неделю
         """
         db = SessionLocal()
         try:
-            actual_balance     = float(data['actual_balance'])
-            calculated_balance = float(data['calculated_balance'])
-            week_start         = data['week_start']
-            week_end           = data['week_end']
-
-            diff = actual_balance - calculated_balance
+            actual     = float(data['actual_balance'])
+            calculated = float(data['calculated_balance'])
+            week_start = data['week_start']
+            week_end   = data['week_end']
+            diff       = actual - calculated
 
             if abs(diff) < 0.01:
                 return {'success': True, 'diff': 0, 'action': 'none'}
 
             if diff > 0:
-                # Факт дохода: у нас больше денег чем считали
                 cat = self._get_or_create_system_category(
-                    db,
-                    name='Корректировка баланса',
-                    cat_type='income',
-                    color_code='#8b5cf6',
+                    db, 'Незапланированные доходы', 'income', '#10b981'
                 )
                 self._upsert_fact(db, cat.id, week_start, week_end, diff)
                 action = 'income'
             else:
-                # Факт расхода: у нас меньше денег чем считали
                 cat = self._get_or_create_system_category(
-                    db,
-                    name='Корректировка баланса',
-                    cat_type='expense',
-                    color_code='#8b5cf6',
+                    db, 'Незапланированные расходы', 'expense', '#f43f5e'
                 )
                 self._upsert_fact(db, cat.id, week_start, week_end, abs(diff))
                 action = 'expense'
 
             db.commit()
-            return {
-                'success': True,
-                'diff':    diff,
-                'action':  action,
-            }
-
+            return {'success': True, 'diff': diff, 'action': action}
         except Exception as e:
             db.rollback()
             return {'success': False, 'error': str(e)}
         finally:
             db.close()
 
-    # ── Получить расчётный баланс на дату ─────────────────────────────────────
     def get_calculated_balance(self, week_start: str) -> dict:
-        """
-        Возвращает расчётный баланс нарастающим итогом до конца
-        указанной недели (включительно).
-        """
         db = SessionLocal()
         try:
-            account = db.query(Account).first()
-            balance = account.initial_balance if account else 0.0
+            a       = db.query(Account).first()
+            balance = a.initial_balance if a else 0.0
 
-            cats       = db.query(Category).all()
-            income_ids = {c.id for c in cats if c.type == 'income'}
-            expense_ids= {c.id for c in cats if c.type == 'expense'}
-
-            settings = db.query(Settings).first()
-            if not settings:
+            s = db.query(Settings).first()
+            if not s:
                 return {'success': False, 'error': 'Нет настроек'}
 
-            weeks = self._generate_weeks(
-                settings.planning_start_date,
-                settings.planning_end_date,
-            )
+            weeks = self._generate_weeks(s.planning_start_date)
+            cats  = db.query(Category).all()
+            income_ids  = {c.id for c in cats if c.type == 'income'}
+            expense_ids = {c.id for c in cats if c.type == 'expense'}
 
             for week in weeks:
                 ws = week['week_start']
 
-                # Суммируем все факты и планы за неделю
                 for cat_id in income_ids:
-                    key_facts = db.query(Fact).filter(
-                        and_(
-                            Fact.category_id     == cat_id,
-                            Fact.week_start_date == ws,
-                        )
+                    fs = db.query(Fact).filter(
+                        and_(Fact.category_id == cat_id, Fact.week_start_date == ws)
                     ).all()
-
-                    if key_facts:
-                        balance += sum(f.amount for f in key_facts)
+                    if fs:
+                        balance += sum(f.amount for f in fs)
                     else:
-                        plan = db.query(Plan).filter(
-                            and_(
-                                Plan.category_id     == cat_id,
-                                Plan.week_start_date == ws,
-                            )
+                        p = db.query(Plan).filter(
+                            and_(Plan.category_id == cat_id, Plan.week_start_date == ws)
                         ).first()
-                        if plan:
-                            balance += plan.amount
+                        if p:
+                            balance += p.amount
 
                 for cat_id in expense_ids:
-                    key_facts = db.query(Fact).filter(
-                        and_(
-                            Fact.category_id     == cat_id,
-                            Fact.week_start_date == ws,
-                        )
+                    fs = db.query(Fact).filter(
+                        and_(Fact.category_id == cat_id, Fact.week_start_date == ws)
                     ).all()
-
-                    if key_facts:
-                        balance -= sum(f.amount for f in key_facts)
+                    if fs:
+                        balance -= sum(f.amount for f in fs)
                     else:
-                        plan = db.query(Plan).filter(
-                            and_(
-                                Plan.category_id     == cat_id,
-                                Plan.week_start_date == ws,
-                            )
+                        p = db.query(Plan).filter(
+                            and_(Plan.category_id == cat_id, Plan.week_start_date == ws)
                         ).first()
-                        if plan:
-                            balance -= plan.amount
+                        if p:
+                            balance -= p.amount
 
-                # Останавливаемся на нужной неделе
                 if ws == week_start:
                     break
 
             return {'success': True, 'balance': round(balance, 2)}
-
         except Exception as e:
             return {'success': False, 'error': str(e)}
         finally:
             db.close()
 
-    # ── Вспомогательные методы ────────────────────────────────────────────────
+    # ── Экспорт / Импорт ──────────────────────────────────────────────────────
+    def export_data(self) -> dict:
+        """Возвращает всё содержимое БД как словарь для сохранения в JSON"""
+        db = SessionLocal()
+        try:
+            s    = db.query(Settings).first()
+            a    = db.query(Account).first()
+            cats = db.query(Category).order_by(Category.sort_order).all()
+            plans= db.query(Plan).all()
+            facts= db.query(Fact).all()
+
+            return {
+                'success': True,
+                'data': {
+                    'version':    1,
+                    'exported_at': date.today().isoformat(),
+                    'settings': {
+                        'planning_start_date': s.planning_start_date if s else None,
+                        'financial_strategy':  s.financial_strategy  if s else 'manual',
+                        'visual_config':       json.loads(s.visual_config or '{}') if s else {},
+                    },
+                    'account': {
+                        'name':            a.name            if a else '',
+                        'initial_balance': a.initial_balance if a else 0,
+                    },
+                    'categories': [
+                        {
+                            'id':         c.id,
+                            'name':       c.name,
+                            'type':       c.type,
+                            'color_code': c.color_code,
+                            'sort_order': c.sort_order,
+                            'is_custom':  bool(c.is_custom),
+                        }
+                        for c in cats
+                    ],
+                    'plans': [
+                        {
+                            'category_id':     p.category_id,
+                            'week_start_date': p.week_start_date,
+                            'week_end_date':   p.week_end_date,
+                            'amount':          p.amount,
+                        }
+                        for p in plans
+                    ],
+                    'facts': [
+                        {
+                            'category_id':     f.category_id,
+                            'week_start_date': f.week_start_date,
+                            'week_end_date':   f.week_end_date,
+                            'amount':          f.amount,
+                            'date':            f.date,
+                            'comment':         f.comment,
+                            'external_id':     f.external_id,
+                        }
+                        for f in facts
+                    ],
+                }
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+        finally:
+            db.close()
+
+    def import_data(self, data: dict) -> dict:
+        """Полностью заменяет данные БД из импортированного словаря"""
+        db = SessionLocal()
+        try:
+            # Очищаем таблицы
+            db.query(Fact).delete()
+            db.query(Plan).delete()
+            db.query(Category).delete()
+            db.query(Account).delete()
+            db.query(Settings).delete()
+
+            s = data.get('settings', {})
+            db.add(Settings(
+                planning_start_date = s.get('planning_start_date'),
+                financial_strategy  = s.get('financial_strategy', 'manual'),
+                visual_config       = json.dumps(s.get('visual_config', {})),
+            ))
+
+            a = data.get('account', {})
+            db.add(Account(
+                name            = a.get('name', 'Основной счёт'),
+                initial_balance = float(a.get('initial_balance', 0)),
+            ))
+
+            # Сохраняем категории с оригинальными id
+            id_map = {}  # old_id → new_id (для планов и фактов)
+            for cat in data.get('categories', []):
+                new_cat = Category(
+                    name       = cat['name'],
+                    type       = cat['type'],
+                    color_code = cat.get('color_code', '#94a3b8'),
+                    sort_order = cat.get('sort_order', 0),
+                    is_custom  = cat.get('is_custom', True),
+                )
+                db.add(new_cat)
+                db.flush()
+                id_map[cat['id']] = new_cat.id
+
+            a_obj = db.query(Account).first()
+
+            for p in data.get('plans', []):
+                new_cat_id = id_map.get(p['category_id'])
+                if new_cat_id:
+                    db.add(Plan(
+                        category_id     = new_cat_id,
+                        week_start_date = p['week_start_date'],
+                        week_end_date   = p['week_end_date'],
+                        amount          = p['amount'],
+                    ))
+
+            for f in data.get('facts', []):
+                new_cat_id = id_map.get(f['category_id'])
+                if new_cat_id:
+                    db.add(Fact(
+                        account_id      = a_obj.id,
+                        category_id     = new_cat_id,
+                        week_start_date = f['week_start_date'],
+                        week_end_date   = f['week_end_date'],
+                        amount          = f['amount'],
+                        date            = f.get('date'),
+                        comment         = f.get('comment'),
+                        external_id     = f.get('external_id'),
+                    ))
+
+            db.commit()
+            return {'success': True}
+        except Exception as e:
+            db.rollback()
+            return {'success': False, 'error': str(e)}
+        finally:
+            db.close()
+
+    # ── Диалог сохранения файла (через PyWebView) ──────────────────────────────
+    def save_file_dialog(self, content: str, filename: str) -> dict:
+        """Открывает диалог сохранения файла"""
+        try:
+            result = self._window.create_file_dialog(
+                dialog_type=20,   # SAVE_DIALOG
+                save_filename=filename,
+                file_types=('JSON Files (*.json)', 'All Files (*.*)')
+            )
+            if result and len(result) > 0:
+                path = result[0] if isinstance(result, (list, tuple)) else result
+                with open(path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                return {'success': True, 'path': path}
+            return {'success': False, 'error': 'Отменено'}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    def open_file_dialog(self) -> dict:
+        """Открывает диалог выбора файла и возвращает содержимое"""
+        try:
+            result = self._window.create_file_dialog(
+                dialog_type=10,   # OPEN_DIALOG
+                file_types=('JSON Files (*.json)', 'All Files (*.*)')
+            )
+            if result and len(result) > 0:
+                path = result[0] if isinstance(result, (list, tuple)) else result
+                with open(path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                return {'success': True, 'content': content}
+            return {'success': False, 'error': 'Отменено'}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    # ── Вспомогательные ───────────────────────────────────────────────────────
     def _get_monday(self, date_str: str) -> date:
         d = date.fromisoformat(date_str)
         return d - timedelta(days=d.weekday())
 
-    def _generate_weeks(self, start_str: str, end_str: str) -> list:
+    def _generate_weeks(self, start_str: str) -> list:
+        """52 недели вперёд от start_str (приводим к понедельнику)"""
         MONTHS_RU = {
-            1: 'янв', 2: 'фев', 3: 'мар', 4: 'апр',
-            5: 'май', 6: 'июн', 7: 'июл', 8: 'авг',
-            9: 'сен', 10: 'окт', 11: 'ноя', 12: 'дек',
+            1:'янв', 2:'фев', 3:'мар', 4:'апр',
+            5:'май', 6:'июн', 7:'июл', 8:'авг',
+            9:'сен', 10:'окт', 11:'ноя', 12:'дек',
         }
-
-        start = date.fromisoformat(start_str)
-        end   = date.fromisoformat(end_str)
-
-        if start.weekday() != 0:
-            start = start - timedelta(days=start.weekday())
-
+        start   = self._get_monday(start_str)
         weeks   = []
         current = start
 
-        while current <= end:
+        for i in range(52):
             week_end = current + timedelta(days=6)
             label = (
                 f"{current.day} {MONTHS_RU[current.month]}"
                 f" – "
                 f"{week_end.day} {MONTHS_RU[week_end.month]}"
             )
-            current_year = date.today().year
-            if current.year != current_year:
-                label += f" {current.year}"
-
             weeks.append({
-                'week_start': current.isoformat(),
-                'week_end':   week_end.isoformat(),
-                'label':      label,
+                'week_start':  current.isoformat(),
+                'week_end':    week_end.isoformat(),
+                'label':       label,
+                'week_number': i + 1,
             })
             current += timedelta(days=7)
 
         return weeks
+
+    def _get_or_create_system_category(
+        self, db, name: str, cat_type: str, color_code: str
+    ):
+        cat = db.query(Category).filter(Category.name == name).first()
+        if not cat:
+            last = db.query(Category).filter(
+                Category.type == cat_type
+            ).order_by(Category.sort_order.desc()).first()
+            next_order = (last.sort_order + 1) if last else 0
+            cat = Category(
+                name       = name,
+                type       = cat_type,
+                color_code = color_code,
+                sort_order = next_order,
+                is_custom  = False,
+            )
+            db.add(cat)
+            db.flush()
+        return cat

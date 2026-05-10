@@ -1,507 +1,645 @@
-/* ── Шрифт ───────────────────────────────────────────────── */
-* {
-  box-sizing: border-box;
-}
+/* ══════════════════════════════════════════════════════════════
+   BASE
+   ══════════════════════════════════════════════════════════════ */
+* { box-sizing: border-box; }
 
 body {
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Индикатор шагов мастера ─────────────────────────────── */
-.step-dot {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #e2e8f0;
-  border: 2px solid #e2e8f0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 600;
-  color: #94a3b8;
-  transition: all 0.25s ease;
-  flex-shrink: 0;
-}
-
-.step-dot.active {
-  background: #10b981;
-  border-color: #10b981;
-  color: white;
-  box-shadow: 0 0 0 4px #d1fae5;
-}
-
-.step-dot.done {
-  background: #10b981;
-  border-color: #10b981;
-  color: white;
-}
-
-.step-line {
-  flex: 1;
-  height: 2px;
-  background: #e2e8f0;
-  max-width: 80px;
-  transition: background 0.25s ease;
-}
-
-.step-line.done {
-  background: #10b981;
-}
-
-/* ── Кнопки типа счёта ───────────────────────────────────── */
-.type-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 12px 8px;
-  border-radius: 12px;
-  border: 2px solid #e2e8f0;
-  background: white;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  color: #64748b;
-}
-
-.type-btn:hover {
-  border-color: #a7f3d0;
-  background: #f0fdf4;
-}
-
-.type-btn.active {
-  border-color: #10b981;
-  background: #ecfdf5;
-  color: #065f46;
-}
-
-/* ── Кнопки стратегии ────────────────────────────────────── */
-.strategy-btn {
-  width: 100%;
-  padding: 14px 16px;
-  border-radius: 12px;
-  border: 2px solid #e2e8f0;
-  background: white;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  text-align: left;
-}
-
-.strategy-btn:hover {
-  border-color: #a7f3d0;
-  background: #f0fdf4;
-}
-
-.strategy-btn.active {
-  border-color: #10b981;
-  background: #ecfdf5;
-}
-
-/* ── Чекбокс-карточки категорий ──────────────────────────── */
-.category-card {
+/* ══════════════════════════════════════════════════════════════
+   SIDEBAR NAV
+   ══════════════════════════════════════════════════════════════ */
+.nav-btn {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 2px solid #e2e8f0;
-  background: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #cbd5e1;
+  background: transparent;
+  border: none;
   cursor: pointer;
-  transition: all 0.15s ease;
-  -webkit-user-select: none;
-  user-select: none;
+  transition: background 0.15s, color 0.15s;
+  width: 100%;
+  text-align: left;
 }
 
-.category-card:hover {
-  border-color: #cbd5e1;
-  background: #f8fafc;
+.nav-btn:hover {
+  background: #1e293b;
+  color: #f1f5f9;
 }
 
-.category-card.selected {
-  border-color: #10b981;
-  background: #ecfdf5;
-}
-
-.category-card .color-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.category-card .check-icon {
-  margin-left: auto;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 2px solid #cbd5e1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: all 0.15s ease;
-}
-
-.category-card.selected .check-icon {
-  background: #10b981;
-  border-color: #10b981;
+.nav-btn.active {
+  background: #2563eb;
   color: white;
 }
 
 /* ══════════════════════════════════════════════════════════════
-   ТАБЛИЦА CASH FLOW
+   ТАБЛИЦА
    ══════════════════════════════════════════════════════════════ */
-
-/* Контейнер таблицы */
 .cashflow-table {
-  min-width: 100%;
+  border-collapse: collapse;
   width: max-content;
-  font-size: 13px;
+  min-width: 100%;
 }
 
-/* ── Общие стили ячеек ───────────────────────────────────────── */
+/* Общие ячейки */
 .cashflow-table th,
 .cashflow-table td {
-  border-bottom: 1px solid #e2e8f0;
-  border-right: 1px solid #e2e8f0;
+  border: 1px solid #94a3b8;
   white-space: nowrap;
-  padding: 0;
 }
 
-/* ── Шапка (thead) ───────────────────────────────────────────── */
+/* ── Шапка ────────────────────────────────────────────────── */
 .cashflow-table thead th {
+  background: #f1f5f9;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #475569;
+  padding: 8px 12px;
+}
+
+/* Угловая ячейка */
+.th-sticky {
+  position: sticky;
+  left: 0;
+  top: 0;
+  z-index: 30;
+  background: #f1f5f9;
+  width: 256px;
+  min-width: 256px;
+  text-align: left;
+}
+
+/* Ячейки недель в шапке */
+.th-week {
   position: sticky;
   top: 0;
-  background: #f8fafc;
-  z-index: 30;
-  font-weight: 600;
-  color: #475569;
+  z-index: 20;
   text-align: center;
-  padding: 10px 12px;
-  font-size: 12px;
+  min-width: 110px;
+  width: 110px;
+  padding: 8px 4px;
 }
 
-/* Угловая ячейка (верхний левый угол) */
-.cashflow-table thead th.col-sticky {
-  left: 0;
-  z-index: 40;
-  background: #f8fafc;
-  border-right: 2px solid #e2e8f0;
-  min-width: 220px;
-  width: 220px;
-  text-align: left;
-  padding-left: 16px;
-}
-
-/* Ячейки-недели в шапке */
-.cashflow-table thead th.col-week {
-  min-width: 130px;
-  width: 130px;
+/* Номер недели */
+.week-number {
   font-size: 11px;
-  font-weight: 500;
-  color: #64748b;
-  border-bottom: 2px solid #e2e8f0;
-}
-
-/* Подсветка текущей недели */
-.cashflow-table thead th.col-week.current-week {
-  background: #ecfdf5;
-  color: #065f46;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #475569;
 }
 
-/* ── Левая колонка (названия категорий) ──────────────────────── */
-.cashflow-table td.col-sticky {
+/* Даты недели */
+.week-dates {
+  font-size: 11px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 2px;
+  background: rgba(203,213,225,0.4);
+  border-radius: 4px;
+  padding: 1px 4px;
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* ── Sticky левая колонка ─────────────────────────────────── */
+.td-sticky {
   position: sticky;
   left: 0;
-  z-index: 20;
+  z-index: 10;
   background: white;
-  border-right: 2px solid #e2e8f0;
-  min-width: 220px;
-  width: 220px;
-  padding: 0 12px;
+  width: 256px;
+  min-width: 256px;
+  border-right: 1px solid #94a3b8;
 }
 
-/* ── Строки секций (Доходы / Расходы) ────────────────────────── */
-.row-section-header td {
-  background: #f1f5f9 !important;
+/* ── Секция-разделитель ───────────────────────────────────── */
+.row-section td {
+  padding: 0;
+  border-color: #94a3b8;
+}
+
+.row-section .section-label {
+  padding: 6px 12px;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #94a3b8;
-  padding: 6px 16px !important;
-  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  left: 0;
+  width: max-content;
 }
 
-/* ── Строки категорий ────────────────────────────────────────── */
-.row-category td {
-  height: 44px;
-  background: white;
+.row-section.income-section td {
+  background: rgba(236,253,245,0.5);
+}
+
+.row-section.income-section .section-label {
+  color: #047857;
+}
+
+.row-section.expense-section td {
+  background: rgba(255,241,242,0.5);
+}
+
+.row-section.expense-section .section-label {
+  color: #be123c;
+}
+
+/* ── Строки категорий ─────────────────────────────────────── */
+.row-category {
+  cursor: default;
 }
 
 .row-category:hover td {
   background: #f8fafc;
 }
 
-.row-category:hover td.col-sticky {
+.row-category:hover .td-sticky {
   background: #f8fafc;
 }
 
-/* Название категории */
-.category-name-cell {
+.row-category.dragging {
+  opacity: 0.5;
+}
+
+/* Ячейка с названием категории */
+.cat-name-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  height: 44px;
+  gap: 8px;
+}
+
+.cat-name-left {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 44px;
-  padding: 0 12px;
+  min-width: 0;
+  flex: 1;
+  pointer-events: none;
 }
 
-.category-color-bar {
-  width: 3px;
-  height: 20px;
-  border-radius: 2px;
+.cat-color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   flex-shrink: 0;
 }
 
-.category-name-text {
-  flex: 1;
-  font-size: 13px;
-  color: #334155;
+.cat-name-text {
+  font-size: 14px;
   font-weight: 500;
+  color: #334155;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 170px;
 }
 
-/* Иконка автозаполнения (появляется при наведении) */
+/* Кнопка автозаполнения */
 .autofill-btn {
   opacity: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 6px;
   border: 1px solid #e2e8f0;
   background: white;
   cursor: pointer;
-  transition: opacity 0.15s ease, background 0.15s ease;
+  transition: opacity 0.15s, background 0.15s, border-color 0.15s;
   flex-shrink: 0;
-  color: #94a3b8;
+  color: #64748b;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
 }
 
 .row-category:hover .autofill-btn {
   opacity: 1;
 }
 
-.autofill-btn:hover {
-  background: #f0fdf4;
-  border-color: #6ee7b7;
-  color: #10b981;
+/* Для доходов */
+.autofill-btn.income:hover {
+  background: #ecfdf5;
+  border-color: transparent;
+  color: #047857;
 }
 
-/* ── Ячейки данных ───────────────────────────────────────────── */
+/* Для расходов */
+.autofill-btn.expense:hover {
+  background: #fff1f2;
+  border-color: transparent;
+  color: #be123c;
+}
+
+/* ── Ячейки данных ────────────────────────────────────────── */
 .data-cell {
-  text-align: right;
   padding: 0;
-  cursor: pointer;
+  text-align: right;
   position: relative;
-  transition: background 0.1s ease;
-}
-
-.data-cell:hover {
-  background: #f0fdf4 !important;
+  min-width: 110px;
+  width: 110px;
 }
 
 .data-cell-inner {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  height: 44px;
-  padding: 0 12px;
+  padding: 6px 8px;
+  min-height: 44px;
+  cursor: pointer;
   font-variant-numeric: tabular-nums;
   font-size: 13px;
-  min-width: 130px;
+}
+
+.data-cell-inner:hover {
+  background: #f1f5f9;
+}
+
+/* Inline editor */
+.cell-editor {
+  position: absolute;
+  inset: 0;
+  background: white;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+}
+
+.cell-editor-tabs {
+  display: flex;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 4px;
+  justify-content: center;
+  gap: 8px;
+}
+
+.cell-editor-tab {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #94a3b8;
+  padding: 0;
+}
+
+.cell-editor-tab.active {
+  color: #2563eb;
+}
+
+.cell-editor-tab:hover:not(.active) {
+  color: #475569;
+}
+
+.cell-editor input {
+  width: 100%;
+  border: 1px solid #93c5fd;
+  border-radius: 4px;
+  padding: 2px 4px;
+  text-align: right;
+  font-size: 13px;
+  outline: none;
+  font-variant-numeric: tabular-nums;
+  font-family: inherit;
+}
+
+.cell-editor input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
 }
 
 /* Значения план/факт */
-.cell-value-plan {
-  color: #94a3b8;
-  font-weight: 400;
+.val-plan-income {
+  color: #64748b;
+  font-weight: 500;
 }
 
-.cell-value-fact-income {
-  font-weight: 700;
-}
-
-.cell-value-fact-expense {
-  color: #1e293b;
+.val-plan-expense {
+  color: #64748b;
+  font-weight: 500;
   font-style: italic;
 }
 
-/* Пустая ячейка */
-.cell-empty {
-  color: #cbd5e1;
+.val-fact-income {
+  font-weight: 700;
+  /* color задаётся инлайн через color_code категории */
 }
 
-/* ── Строки итогов ───────────────────────────────────────────── */
+.val-fact-expense {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* ── Итоговые строки ──────────────────────────────────────── */
 .row-total td {
   background: #f8fafc;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
-  height: 40px;
-  border-top: 2px solid #e2e8f0;
+  padding: 6px 8px;
+  border-color: #94a3b8;
 }
 
-.row-total td.col-sticky {
+.row-total .td-sticky {
   background: #f8fafc;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #475569;
+  padding: 6px 16px;
 }
 
-.row-total .data-cell-inner {
-  height: 40px;
+/* ── Строка баланса (sticky bottom) ──────────────────────── */
+.row-balance {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
 }
 
-/* Итого доходы */
-.row-total-income td {
-  color: #059669;
-}
-
-/* Итого расходы */
-.row-total-expense td {
-  color: #dc2626;
-}
-
-/* Строка остатка */
 .row-balance td {
-  background: #0f172a;
   color: white;
   font-weight: 700;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
-  height: 44px;
-  border-top: 2px solid #1e293b;
+  padding: 6px 8px;
+  border-color: rgba(255,255,255,0.3);
+  /* background задаётся через JS из settings.weekColor */
 }
 
-.row-balance td.col-sticky {
-  background: #0f172a;
-  color: #94a3b8;
+.row-balance .td-sticky {
   font-size: 11px;
-  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
+  color: rgba(255,255,255,0.7);
+  padding: 6px 16px;
+  /* background задаётся через JS из settings.weekColor */
 }
 
-/* Остаток отрицательный */
-.balance-negative {
-  background: #dc2626 !important;
-  color: white !important;
+.balance-cell-inner {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-height: 40px;
+  font-variant-numeric: tabular-nums;
 }
 
-.balance-negative.col-sticky {
-  background: #0f172a !important;
-}
-
-/* Иконка «волшебная палочка» при дефиците */
-.deficit-wand {
+/* Иконка дефицита */
+.wand-btn {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  background: rgba(255,255,255,0.2);
-  cursor: pointer;
-  margin-left: 6px;
-  flex-shrink: 0;
-  transition: background 0.15s;
-}
-
-.deficit-wand:hover {
-  background: rgba(255,255,255,0.35);
-}
-
-/* Подсветка текущей недели в строках */
-.current-week-col {
-  background: #f0fdf4 !important;
-}
-
-/* ══════════════════════════════════════════════════════════════
-   POPOVER
-   ══════════════════════════════════════════════════════════════ */
-
-.cell-popover {
-  position: fixed;
-  z-index: 50;
-  width: 220px;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 14px;
-  box-shadow:
-    0 4px 6px -1px rgba(0,0,0,0.07),
-    0 10px 30px -5px rgba(0,0,0,0.12);
-}
-
-.popover-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.popover-close-btn {
-  display: flex;
   align-items: center;
   justify-content: center;
   width: 22px;
   height: 22px;
-  border-radius: 6px;
-  color: #94a3b8;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.2);
   border: none;
-  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.15s;
+  opacity: 0;
+  flex-shrink: 0;
+}
+
+.row-balance td:hover .wand-btn {
+  opacity: 1;
+}
+
+.wand-btn:hover {
+  background: rgba(255,255,255,0.35);
+}
+
+/* Первая ячейка баланса кликабельна */
+.balance-init-cell {
+  cursor: pointer;
+}
+
+.balance-init-cell:hover {
+  opacity: 0.85;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DRAG AND DROP
+   ══════════════════════════════════════════════════════════════ */
+.row-category[draggable="true"] {
+  cursor: grab;
+}
+
+.row-category[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SETTINGS VIEW
+   ══════════════════════════════════════════════════════════════ */
+.settings-section {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.settings-section h2 {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #475569;
+  margin-bottom: 16px;
+}
+
+.settings-input {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  background: #f8fafc;
+  color: #1e293b;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.settings-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+}
+
+.settings-select {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  background: #f8fafc;
+  color: #1e293b;
+  outline: none;
+  font-family: inherit;
+}
+
+/* Категория в настройках */
+.settings-cat-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px solid #f1f5f9;
+  gap: 8px;
+}
+
+.settings-cat-item:hover {
+  background: #f1f5f9;
+}
+
+.settings-cat-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-cat-edit-input {
+  flex: 1;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 13px;
+  outline: none;
+  background: white;
+  font-family: inherit;
+}
+
+.settings-cat-edit-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+}
+
+.settings-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.settings-icon-btn:hover {
+  color: #3b82f6;
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.settings-icon-btn.danger:hover {
+  color: #ef4444;
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+/* Кнопки в настройках */
+.btn-settings-primary {
+  padding: 10px 24px;
+  background: #1e293b;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: none;
+  border-radius: 6px;
   cursor: pointer;
   transition: background 0.15s;
 }
 
-.popover-close-btn:hover {
-  background: #f1f5f9;
-  color: #475569;
+.btn-settings-primary:hover {
+  background: #334155;
 }
 
-/* Вкладки план/факт */
-.popover-tab {
-  flex: 1;
-  padding: 5px 10px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #64748b;
-  border-radius: 7px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.popover-tab.active {
+.btn-settings-secondary {
+  padding: 10px 16px;
   background: white;
-  color: #1e293b;
+  color: #475569;
+  font-size: 13px;
   font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-settings-secondary:hover {
+  background: #f8fafc;
+}
+
+.btn-settings-blue {
+  padding: 10px 16px;
+  background: #2563eb;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-settings-blue:hover {
+  background: #1d4ed8;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   МОДАЛЬНЫЕ ОКНА
+   ══════════════════════════════════════════════════════════════ */
+.modal-show {
+  display: flex !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TOAST
+   ══════════════════════════════════════════════════════════════ */
+#app-toast {
+  pointer-events: none;
 }
 
 /* ══════════════════════════════════════════════════════════════
    УТИЛИТЫ
    ══════════════════════════════════════════════════════════════ */
-
-/* Скрыть нативные стрелки у number input */
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-/* Анимация спиннера */
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -509,280 +647,5 @@ input[type=number]::-webkit-outer-spin-button {
   animation: spin 0.8s linear infinite;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   МОДАЛЬНЫЕ ОКНА (общие стили)
-   ══════════════════════════════════════════════════════════════ */
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.45);
-  -webkit-backdrop-filter: blur(2px);
-  backdrop-filter: blur(2px);
-  z-index: 60;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-}
-
-.modal-overlay.hidden {
-  display: none;
-}
-
-.modal-box {
-  background: white;
-  border-radius: 20px;
-  box-shadow:
-    0 8px 16px -4px rgba(0,0,0,0.1),
-    0 24px 48px -8px rgba(0,0,0,0.15);
-  overflow: hidden;
-  animation: modalIn 0.2s ease;
-}
-
-@keyframes modalIn {
-  from { opacity: 0; transform: scale(0.95) translateY(8px); }
-  to   { opacity: 1; transform: scale(1)    translateY(0); }
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-.modal-close-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  border: none;
-  background: transparent;
-  color: #94a3b8;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.modal-close-btn:hover {
-  background: #f1f5f9;
-  color: #475569;
-}
-
-.modal-body {
-  padding: 20px;
-}
-
-.modal-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 14px 20px;
-  background: #f8fafc;
-  border-top: 1px solid #f1f5f9;
-}
-
-/* Общие элементы формы */
-.modal-label {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  color: #475569;
-  margin-bottom: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.modal-input {
-  width: 100%;
-  padding: 9px 12px;
-  border-radius: 10px;
-  border: 1.5px solid #e2e8f0;
-  font-size: 13px;
-  color: #1e293b;
-  background: white;
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-  font-family: inherit;
-}
-
-.modal-input:focus {
-  border-color: #10b981;
-  box-shadow: 0 0 0 3px #d1fae5;
-}
-
-/* Кнопки */
-.btn-primary {
-  padding: 8px 20px;
-  font-size: 13px;
-  font-weight: 600;
-  color: white;
-  background: #10b981;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.btn-primary:hover {
-  background: #059669;
-}
-
-.btn-primary:disabled {
-  background: #a7f3d0;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #64748b;
-  background: white;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.btn-secondary:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-}
-
-/* Счётчик недель */
-.weeks-counter-btn {
-  width: 32px;
-  height: 36px;
-  border-radius: 8px;
-  border: 1.5px solid #e2e8f0;
-  background: white;
-  font-size: 16px;
-  font-weight: 500;
-  color: #475569;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-  flex-shrink: 0;
-}
-
-.weeks-counter-btn:hover {
-  background: #f0fdf4;
-  border-color: #6ee7b7;
-  color: #059669;
-}
-
-/* ══════════════════════════════════════════════════════════════
-   НАСТРОЙКИ — стратегия (радио)
-   ══════════════════════════════════════════════════════════════ */
-
-.settings-strategy-option {
-  display: block;
-  cursor: pointer;
-}
-
-.strategy-radio-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 2px solid #e2e8f0;
-  background: white;
-  transition: all 0.15s ease;
-}
-
-.strategy-radio-btn:hover {
-  border-color: #a7f3d0;
-  background: #f0fdf4;
-}
-
-.settings-strategy-option input:checked + .strategy-radio-btn {
-  border-color: #10b981;
-  background: #ecfdf5;
-}
-
-/* Список категорий в настройках */
-.settings-cat-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: white;
-  border: 1px solid #f1f5f9;
-  transition: background 0.1s;
-}
-
-.settings-cat-item:hover {
-  background: #f8fafc;
-}
-
-.settings-cat-delete {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  color: #cbd5e1;
-  cursor: pointer;
-  transition: all 0.15s;
-  flex-shrink: 0;
-}
-
-.settings-cat-delete:hover {
-  background: #fee2e2;
-  color: #ef4444;
-}
-
-/* ══════════════════════════════════════════════════════════════
-   DRAG AND DROP
-   ══════════════════════════════════════════════════════════════ */
-
-.drag-handle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  color: #cbd5e1;
-  cursor: grab;
-  flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.15s;
-  border-radius: 4px;
-}
-
-.row-category:hover .drag-handle {
-  opacity: 1;
-}
-
-.drag-handle:hover {
-  color: #94a3b8;
-  background: #f1f5f9;
-}
-
-.drag-handle:active {
-  cursor: grabbing;
-}
-
-.row-category.dragging {
-  opacity: 0.4;
-  background: #f0fdf4 !important;
-}
-
-.dnd-placeholder td {
-  height: 44px;
-  background: #ecfdf5;
-  border: 2px dashed #6ee7b7 !important;
-}
+/* Скрыть/показать */
+.hidden { display: none !important; }
