@@ -94,14 +94,14 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #475569;
+  /* color: #475569; */
 }
 
 /* Даты недели */
 .week-dates {
   font-size: 11px;
   font-weight: 800;
-  color: #0f172a;
+  /* color: #0f172a; */
   margin-top: 2px;
   background: rgba(203,213,225,0.4);
   border-radius: 4px;
@@ -384,7 +384,7 @@ body {
   font-variant-numeric: tabular-nums;
   padding: 6px 8px;
   border-color: rgba(255,255,255,0.3);
-  /* background задаётся через JS из settings.weekColor */
+  isolation: isolate;
 }
 
 .row-balance .td-sticky {
@@ -649,3 +649,15 @@ input[type=number]::-webkit-outer-spin-button {
 
 /* Скрыть/показать */
 .hidden { display: none !important; }
+
+/* Строка баланса всегда поверх контента при скролле */
+.row-balance {
+  position: sticky;
+  bottom: 0;
+  z-index: 25;
+}
+
+.row-balance td {
+  /* Явный непрозрачный фон — задаётся через JS */
+  opacity: 1 !important;
+}

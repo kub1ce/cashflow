@@ -78,6 +78,26 @@ function pluralWeeks(n) {
   return 'недель';
 }
 
+/**
+ * Определяет нужен ли тёмный или светлый текст
+ * для заданного цвета фона.
+ * Возвращает '#0f172a' (тёмный) или '#ffffff' (светлый)
+ */
+function getContrastColor(hexColor) {
+  // Убираем # если есть
+  const hex = hexColor.replace('#', '');
+
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+
+  // Формула относительной яркости (WCAG)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+  // Если фон светлый — тёмный текст, и наоборот
+  return luminance > 0.5 ? '#0f172a' : '#ffffff';
+} 
+
 // ══════════════════════════════════════════════════════════════
 // ПЕРЕКЛЮЧЕНИЕ VIEWS
 // ══════════════════════════════════════════════════════════════
@@ -93,7 +113,7 @@ function switchView(view) {
     .classList.toggle('hidden', view !== 'dashboard');
 
   document.getElementById('view-title').textContent =
-    view === 'dashboard' ? 'Таблица планирования' : 'Настройки приложения';
+    view === 'dashboard' ? 'Таблица планирования' : 'Параметры системы';
 
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   const navId = view === 'dashboard' ? 'nav-dashboard' : 'nav-settings';
@@ -139,17 +159,32 @@ function renderTable(data) {
     th.dataset.weekStart = week.week_start;
 
     const isCurrent = isCurrentWeek(week.week_start, week.week_end);
-    if (isCurrent) {
-      th.style.backgroundColor = cwColor;
-    }
 
     const startD = new Date(week.week_start + 'T00:00:00');
     const endD   = new Date(week.week_end   + 'T00:00:00');
     const fmt    = d => `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;
 
-    th.innerHTML = `
-      <div class="week-number">Неделя ${week.week_number}</div>
-      <div class="week-dates">${fmt(startD)} - ${fmt(endD)}</div>`;
+    if (isCurrent) {
+      const textColor = getContrastColor(cwColor);
+      th.style.backgroundColor = cwColor;
+      th.innerHTML = `
+        <div class="week-number" style="color:${textColor}">
+          Неделя ${week.week_number}
+        </div>
+        <div class="week-dates"
+            style="color:${textColor};background:rgba(0,0,0,0.12)">
+          ${fmt(startD)} - ${fmt(endD)}
+        </div>`;
+    } else {
+      th.innerHTML = `
+        <div class="week-number" style="color:#475569">
+          Неделя ${week.week_number}
+        </div>
+        <div class="week-dates" style="color:#0f172a">
+          ${fmt(startD)} - ${fmt(endD)}
+        </div>`;
+    }
+
     tr.appendChild(th);
   });
 
@@ -228,12 +263,12 @@ function makeCategoryRow(cat, weeks, plans, facts, cwColor) {
       <button class="autofill-btn ${isIncome ? 'income' : 'expense'}"
               title="Автозаполнение плана"
               onclick="openAutofill(event, ${cat.id})">
-        <!-- Repeat icon -->
-        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
-             stroke="currentColor" stroke-width="2.5">
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round"
-            d="M17 1l4 4-4 4M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4m14
-               4H3v-2a4 4 0 014-4h14"/>
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0
+               0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357
+               2H15"/>
         </svg>
       </button>
     </div>`;
@@ -516,10 +551,14 @@ function recalcTotalsAndBalance() {
     inner.innerHTML = `
       ${isNeg ? `
         <button class="wand-btn"
-                onclick="handleDeficit(event,'${wt.weekStart}',
-                         '${weeks[i].week_end}',
-                         ${Math.abs(running).toFixed(2)})"
-                title="Покрыть дефицит">🪄</button>` : ''}
+        onclick="handleDeficit(event,'${week.week_start}',
+                 '${week.week_end}',
+                 ${Math.abs(running).toFixed(2)})"
+        title="Покрыть дефицит">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-magic" viewBox="0 0 16 16">
+            <path d="M9.5 2.672a.5.5 0 1 0 1 0V.843a.5.5 0 0 0-1 0zm4.5.035A.5.5 0 0 0 13.293 2L12 3.293a.5.5 0 1 0 .707.707zM7.293 4A.5.5 0 1 0 8 3.293L6.707 2A.5.5 0 0 0 6 2.707zm-.621 2.5a.5.5 0 1 0 0-1H4.843a.5.5 0 1 0 0 1zm8.485 0a.5.5 0 1 0 0-1h-1.829a.5.5 0 0 0 0 1zM13.293 10A.5.5 0 1 0 14 9.293L12.707 8a.5.5 0 1 0-.707.707zM9.5 11.157a.5.5 0 0 0 1 0V9.328a.5.5 0 0 0-1 0zm1.854-5.097a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L8.646 5.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0l1.293-1.293Zm-3 3a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L.646 13.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0z"/>
+          </svg>
+</button>` : ''}
       <span style="${isNeg ? `color:${negColor}` : ''}">${formatAmount(running)}</span>`;
   });
 }
@@ -576,19 +615,17 @@ function makeBalanceRow(weeks, categories, plans, facts, initialBalance,
   const tr = document.createElement('tr');
   tr.className = 'row-balance';
 
+  const balanceTextColor = getContrastColor(weekColor);
   const tdLabel = document.createElement('td');
-  tdLabel.className = 'td-sticky balance-init-cell';
+  tdLabel.className = 'td-sticky';
   tdLabel.style.backgroundColor = weekColor;
   tdLabel.innerHTML = `
     <div style="padding:6px 16px;font-size:11px;font-weight:700;
                 text-transform:uppercase;letter-spacing:0.04em;
-                color:rgba(255,255,255,0.7);"
-         title="Кликните чтобы изменить начальный баланс">
+                color:${balanceTextColor};opacity:0.8;">
       Остаток (Баланс)
     </div>`;
-
-  // Клик на первую ячейку = редактирование initial_balance
-  tdLabel.addEventListener('click', () => openInitBalanceEditor(tdLabel, initialBalance));
+  
   tr.appendChild(tdLabel);
 
   const incomeCats  = categories.filter(c => c.type === 'income');
@@ -621,18 +658,28 @@ function makeBalanceRow(weeks, categories, plans, facts, initialBalance,
     td.style.borderColor = 'rgba(255,255,255,0.3)';
     td.style.textAlign = 'right';
 
-    const isCurrent = isCurrentWeek(week.week_start, week.week_end);
-    if (isCurrent) td.style.backgroundColor = `${cwColor}90`;
+    const isCurrent   = isCurrentWeek(week.week_start, week.week_end);
+    const cellBgColor = isCurrent ? cwColor : weekColor;
+    const cellTextColor = getContrastColor(cellBgColor);
+
+    if (isCurrent) td.style.backgroundColor = cwColor;
+    else           td.style.backgroundColor = weekColor;
+    // Для текущей недели в строке баланса считаем контраст отдельно
+    const cwBalanceColor = getContrastColor(cwColor);
 
     td.innerHTML = `
       <div class="balance-cell-inner" style="padding:0 8px;">
         ${isNeg ? `
           <button class="wand-btn"
-                  onclick="handleDeficit(event,'${week.week_start}',
-                           '${week.week_end}',
-                           ${Math.abs(running).toFixed(2)})"
-                  title="Покрыть дефицит">🪄</button>` : ''}
-        <span style="${isNeg ? `color:${negColor}` : 'color:white'}">
+        onclick="handleDeficit(event,'${week.week_start}',
+                 '${week.week_end}',
+                 ${Math.abs(running).toFixed(2)})"
+        title="Покрыть дефицит">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-magic" viewBox="0 0 16 16">
+            <path d="M9.5 2.672a.5.5 0 1 0 1 0V.843a.5.5 0 0 0-1 0zm4.5.035A.5.5 0 0 0 13.293 2L12 3.293a.5.5 0 1 0 .707.707zM7.293 4A.5.5 0 1 0 8 3.293L6.707 2A.5.5 0 0 0 6 2.707zm-.621 2.5a.5.5 0 1 0 0-1H4.843a.5.5 0 1 0 0 1zm8.485 0a.5.5 0 1 0 0-1h-1.829a.5.5 0 0 0 0 1zM13.293 10A.5.5 0 1 0 14 9.293L12.707 8a.5.5 0 1 0-.707.707zM9.5 11.157a.5.5 0 0 0 1 0V9.328a.5.5 0 0 0-1 0zm1.854-5.097a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L8.646 5.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0l1.293-1.293Zm-3 3a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L.646 13.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0z"/>
+          </svg>
+</button>` : ''}
+        <span style="color:${isNeg ? negColor : cellTextColor}">
           ${formatAmount(running)}
         </span>
       </div>`;
@@ -641,58 +688,6 @@ function makeBalanceRow(weeks, categories, plans, facts, initialBalance,
   });
 
   return tr;
-}
-
-// ── Редактирование initial_balance ─────────────────────────────────────────────
-function openInitBalanceEditor(td, currentValue) {
-  // Убираем редактор если уже открыт
-  const existing = document.getElementById('init-balance-editor');
-  if (existing) existing.remove();
-
-  const editor = document.createElement('div');
-  editor.id = 'init-balance-editor';
-  editor.style.cssText = `
-    position: absolute; inset: 0; background: white; z-index: 30;
-    display: flex; flex-direction: column; padding: 4px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    border-radius: 4px; border: 1px solid #93c5fd;`;
-  editor.innerHTML = `
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;
-                color:#94a3b8;margin-bottom:4px;text-align:center;">
-      Начальный баланс
-    </div>
-    <input id="init-balance-input" type="text"
-           value="${currentValue}"
-           style="border:1px solid #93c5fd;border-radius:4px;padding:2px 6px;
-                  text-align:right;font-size:13px;outline:none;
-                  font-family:inherit;font-variant-numeric:tabular-nums;
-                  color:#1e293b;"/>`;
-
-  td.style.position = 'relative';
-  td.appendChild(editor);
-
-  const input = document.getElementById('init-balance-input');
-  input.focus();
-  input.select();
-
-  const save = async () => {
-    const amount = evalAmount(input.value);
-    editor.remove();
-    td.style.position = '';
-
-    try {
-      await pywebview.api.update_account({ initial_balance: amount });
-      await reloadData();
-    } catch (e) {
-      showToast('Ошибка сохранения', 'error');
-    }
-  };
-
-  input.addEventListener('blur', save);
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter')  { e.preventDefault(); save(); }
-    if (e.key === 'Escape') { e.preventDefault(); editor.remove(); }
-  });
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -915,26 +910,48 @@ document.getElementById('deficit-modal')
 // ══════════════════════════════════════════════════════════════
 
 async function openReconcileModal() {
-  const today  = getTodayISO();
-  const monday = getMondayOf(today);
-  const sun    = new Date(monday + 'T00:00:00');
-  sun.setDate(sun.getDate() + 6);
-  const weekEnd = sun.toISOString().split('T')[0];
+  const today = getTodayISO();
 
   document.getElementById('reconcile-date').value   = today;
   document.getElementById('reconcile-actual').value = '';
   document.getElementById('reconcile-diff-preview').classList.add('hidden');
   document.getElementById('reconcile-calculated').textContent = '...';
+  document.getElementById('reconcile-calculated').dataset.value     = '';
+  document.getElementById('reconcile-calculated').dataset.weekStart = '';
+  document.getElementById('reconcile-calculated').dataset.weekEnd   = '';
 
   showModal('reconcile-modal');
 
+  await updateReconcileCalculated(today);
+
+  setTimeout(() => document.getElementById('reconcile-actual').focus(), 100);
+}
+
+async function updateReconcileCalculated(dateStr) {
+  if (!dateStr) return;
+
+  // Находим неделю в которую попадает выбранная дата
+  const targetWeek = App.data?.weeks.find(w =>
+    dateStr >= w.week_start && dateStr <= w.week_end
+  );
+
+  const weekStart = targetWeek?.week_start;
+  const weekEnd   = targetWeek?.week_end;
+
+  if (!weekStart) {
+    document.getElementById('reconcile-calculated').textContent = 'Вне периода';
+    return;
+  }
+
+  document.getElementById('reconcile-calculated').textContent = '...';
+
   try {
-    const res = await pywebview.api.get_calculated_balance(monday);
+    const res = await pywebview.api.get_calculated_balance(weekStart);
     const el  = document.getElementById('reconcile-calculated');
     if (res.success) {
       el.textContent         = `${formatAmount(res.balance)} ₽`;
       el.dataset.value       = res.balance;
-      el.dataset.weekStart   = monday;
+      el.dataset.weekStart   = weekStart;
       el.dataset.weekEnd     = weekEnd;
     } else {
       el.textContent = 'Ошибка';
@@ -1355,6 +1372,9 @@ async function saveMainSettings() {
     if (result.success) {
       showToast('Настройки сохранены', 'success');
       await reloadData();
+      // Переключаемся на таблицу чтобы пользователь сразу увидел изменения
+      switchView('dashboard');
+      location.reload();
     } else {
       showToast('Ошибка: ' + result.error, 'error');
     }
@@ -1370,6 +1390,15 @@ let   _vcUpdateTimer   = null;
 async function updateVisualColor(key, value) {
   _pendingVcUpdate[key] = value;
 
+  // Применяем цвета мгновенно в App.data
+  if (!App.data) return;
+  if (!App.data.settings.visual_config) App.data.settings.visual_config = {};
+  App.data.settings.visual_config[key] = value;
+
+  // Перерисовываем таблицу сразу
+  renderTable(App.data);
+
+  // Сохраняем в БД с debounce (не спамим запросами пока тянут пикер)
   clearTimeout(_vcUpdateTimer);
   _vcUpdateTimer = setTimeout(async () => {
     const current = App.data?.settings?.visual_config || {};
@@ -1377,11 +1406,10 @@ async function updateVisualColor(key, value) {
 
     try {
       await pywebview.api.save_settings({ visual_config: updated });
-      await reloadData();
     } catch (e) {
       showToast('Ошибка сохранения цвета', 'error');
     }
-  }, 600);   // debounce 600ms пока тянут пикер
+  }, 800);
 }
 
 // Экспорт
@@ -1439,18 +1467,15 @@ async function handleImport() {
 // НАВИГАЦИЯ К ДАТЕ
 // ══════════════════════════════════════════════════════════════
 
-function scrollToWeek(dateStr) {
+function scrollToWeek(dateStr, highlight = false) {
   if (!dateStr || !App.data) return;
 
-  // Нормализуем: убираем время
   const target = dateStr.slice(0, 10);
 
-  // Ищем неделю в которую попадает выбранная дата
   let targetWeek = App.data.weeks.find(w =>
     target >= w.week_start && target <= w.week_end
   );
 
-  // Если вне диапазона — снапаем к ближайшей неделе
   if (!targetWeek) {
     const first = App.data.weeks[0];
     const last  = App.data.weeks[App.data.weeks.length - 1];
@@ -1462,8 +1487,6 @@ function scrollToWeek(dateStr) {
 
   if (!container || !th) return;
 
-  // th.offsetLeft уже учитывает sticky колонку (257px)
-  // Вычитаем ширину sticky чтобы колонка не спряталась за ней
   const STICKY_WIDTH     = 257;
   const targetScrollLeft = th.offsetLeft - STICKY_WIDTH;
 
@@ -1471,11 +1494,53 @@ function scrollToWeek(dateStr) {
     left:     Math.max(0, targetScrollLeft),
     behavior: 'smooth',
   });
+
+  // Подсвечиваем колонку красным на 3 секунды
+  if (highlight) highlightWeekColumn(targetWeek.week_start);
+}
+
+function highlightWeekColumn(weekStart) {
+  // Убираем предыдущую подсветку если есть
+  document.querySelectorAll('.week-highlight').forEach(el => {
+    el.classList.remove('week-highlight');
+    el.style.removeProperty('background-color');
+    el.style.removeProperty('transition');
+  });
+
+  // Находим все ячейки этой колонки
+  const th   = document.getElementById(`week-col-${weekStart}`);
+  const cells = document.querySelectorAll(
+    `td[data-week-start="${weekStart}"], th[data-week-start="${weekStart}"]`
+  );
+
+  const allEls = [th, ...cells].filter(Boolean);
+
+  // Запоминаем оригинальные цвета
+  const originals = allEls.map(el => el.style.backgroundColor);
+
+  // Применяем красную подсветку
+  allEls.forEach(el => {
+    el.style.transition       = 'background-color 0.3s ease';
+    el.style.backgroundColor  = '#fca5a5';
+    el.classList.add('week-highlight');
+  });
+
+  // Через 3 секунды убираем
+  setTimeout(() => {
+    allEls.forEach((el, i) => {
+      el.style.backgroundColor = originals[i] || '';
+      el.classList.remove('week-highlight');
+    });
+    // Убираем transition после анимации
+    setTimeout(() => {
+      allEls.forEach(el => el.style.removeProperty('transition'));
+    }, 300);
+  }, 3000);
 }
 
 document.getElementById('date-picker')
   ?.addEventListener('change', e => {
-    if (e.target.value) scrollToWeek(e.target.value);
+    if (e.target.value) scrollToWeek(e.target.value, true);
   });
 
 // ══════════════════════════════════════════════════════════════

@@ -507,13 +507,46 @@ class API:
                 cat = self._get_or_create_system_category(
                     db, 'Незапланированные доходы', 'income', '#10b981'
                 )
-                self._upsert_fact(db, cat.id, week_start, week_end, diff)
+                # Удаляем старую корректировку за эту неделю если есть
+                db.query(Fact).filter(
+                    and_(
+                        Fact.category_id     == cat.id,
+                        Fact.week_start_date == week_start,
+                        Fact.external_id     == None,
+                    )
+                ).delete()
+                db.add(Fact(
+                    account_id      = db.query(Account).first().id,
+                    category_id     = cat.id,
+                    week_start_date = week_start,
+                    week_end_date   = week_end,
+                    amount          = diff,
+                    date            = date.today().isoformat(),
+                    comment         = 'Сверка баланса',
+                    external_id     = None,
+                ))
                 action = 'income'
             else:
                 cat = self._get_or_create_system_category(
                     db, 'Незапланированные расходы', 'expense', '#f43f5e'
                 )
-                self._upsert_fact(db, cat.id, week_start, week_end, abs(diff))
+                db.query(Fact).filter(
+                    and_(
+                        Fact.category_id     == cat.id,
+                        Fact.week_start_date == week_start,
+                        Fact.external_id     == None,
+                    )
+                ).delete()
+                db.add(Fact(
+                    account_id      = db.query(Account).first().id,
+                    category_id     = cat.id,
+                    week_start_date = week_start,
+                    week_end_date   = week_end,
+                    amount          = abs(diff),
+                    date            = date.today().isoformat(),
+                    comment         = 'Сверка баланса',
+                    external_id     = None,
+                ))
                 action = 'expense'
 
             db.commit()
@@ -525,6 +558,10 @@ class API:
             db.close()
 
     def get_calculated_balance(self, week_start: str) -> dict:
+        """
+        Считает баланс нарастающим итогом
+        от начала периода ДО конца указанной недели (включительно).
+        """
         db = SessionLocal()
         try:
             a       = db.query(Account).first()
@@ -535,39 +572,55 @@ class API:
                 return {'success': False, 'error': 'Нет настроек'}
 
             weeks = self._generate_weeks(s.planning_start_date)
-            cats  = db.query(Category).all()
+
+            cats        = db.query(Category).all()
             income_ids  = {c.id for c in cats if c.type == 'income'}
             expense_ids = {c.id for c in cats if c.type == 'expense'}
 
             for week in weeks:
                 ws = week['week_start']
 
+                # Суммируем доходы
                 for cat_id in income_ids:
                     fs = db.query(Fact).filter(
-                        and_(Fact.category_id == cat_id, Fact.week_start_date == ws)
+                        and_(
+                            Fact.category_id     == cat_id,
+                            Fact.week_start_date == ws,
+                        )
                     ).all()
                     if fs:
                         balance += sum(f.amount for f in fs)
                     else:
                         p = db.query(Plan).filter(
-                            and_(Plan.category_id == cat_id, Plan.week_start_date == ws)
+                            and_(
+                                Plan.category_id     == cat_id,
+                                Plan.week_start_date == ws,
+                            )
                         ).first()
                         if p:
                             balance += p.amount
 
+                # Суммируем расходы
                 for cat_id in expense_ids:
                     fs = db.query(Fact).filter(
-                        and_(Fact.category_id == cat_id, Fact.week_start_date == ws)
+                        and_(
+                            Fact.category_id     == cat_id,
+                            Fact.week_start_date == ws,
+                        )
                     ).all()
                     if fs:
                         balance -= sum(f.amount for f in fs)
                     else:
                         p = db.query(Plan).filter(
-                            and_(Plan.category_id == cat_id, Plan.week_start_date == ws)
+                            and_(
+                                Plan.category_id     == cat_id,
+                                Plan.week_start_date == ws,
+                            )
                         ).first()
                         if p:
                             balance -= p.amount
 
+                # Останавливаемся на выбранной неделе
                 if ws == week_start:
                     break
 

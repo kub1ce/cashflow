@@ -83,7 +83,7 @@
           <path stroke-linecap="round" stroke-linejoin="round"
             d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
         </svg>
-        <span>Настройки приложения</span>
+        <span>Параметры системы</span>
       </button>
 
       <div class="text-[10px] uppercase text-slate-500 font-bold px-3 mt-6 mb-2">
@@ -275,6 +275,7 @@
             title="Дата сверки баланса"
             type="date"
             id="reconcile-date"
+            onchange="updateReconcileCalculated(this.value)"
             class="w-full max-w-[200px] border border-slate-300 rounded px-3
                    py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500"
           />

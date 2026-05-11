@@ -43,18 +43,19 @@ def main():
     api = API()
 
     window = webview.create_window(
-        title    = 'Cash Flow',
-        url      = start_url,
-        js_api   = api,
-        width    = 1400,
-        height   = 800,
-        min_size = (900, 600),
+        title     = 'Cash Flow',
+        url       = start_url,
+        js_api    = api,
+        width     = 1400,
+        height    = 800,
+        min_size  = (900, 600),
+        maximized = True,
     )
 
     api.set_window(window)
     api.set_frontend_dir(frontend_dir)
 
-    webview.start(debug=False)  # ! DEBUG HERE
+    webview.start(debug=True)  # ! DEBUG HERE
 
 
 if __name__ == '__main__':
