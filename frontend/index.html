@@ -217,19 +217,93 @@
           </svg>
         </button>
       </header>
-      <div class="p-6 space-y-4">
-        <p class="text-sm text-slate-600 leading-relaxed">
-          Покрытие разрыва в размере
-          <strong id="deficit-amount-display" class="text-rose-600"></strong>.
-          Укажите дату возврата:
-        </p>
-        <input
-          title="Дата возврата"
-          type="date"
-          id="deficit-return-date"
-          class="w-full border border-slate-200 rounded p-3 text-sm
-                 focus:ring-2 focus:ring-blue-500 outline-none"
-        />
+            <div class="p-6 space-y-4">
+
+        <!-- Сумма дефицита -->
+        <div class="p-3 bg-rose-50 border border-rose-100 rounded-lg">
+          <p class="text-xs text-rose-500 font-medium mb-0.5">Сумма дефицита</p>
+          <p id="deficit-amount-display"
+             class="text-xl font-bold text-rose-700 font-mono"></p>
+        </div>
+
+        <!-- Способ возврата -->
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-2 uppercase
+                        tracking-wide">Способ возврата</label>
+          <div class="flex gap-2">
+            <button id="def-mode-single"
+                    onclick="setDeficitMode('single')"
+                    class="def-mode-btn active flex-1 py-2 rounded-lg border-2
+                           text-sm font-semibold transition-all">
+              Единовременно
+            </button>
+            <button id="def-mode-parts"
+                    onclick="setDeficitMode('parts')"
+                    class="def-mode-btn flex-1 py-2 rounded-lg border-2
+                           text-sm font-semibold transition-all">
+              По частям
+            </button>
+          </div>
+        </div>
+
+        <!-- Единовременно -->
+        <div id="def-single-wrap" class="space-y-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">
+              Дата возврата
+            </label>
+            <input title="Дата возврата" type="date" id="deficit-return-date"
+                   class="w-full border border-slate-200 rounded p-2.5 text-sm
+                          focus:ring-2 focus:ring-blue-500 outline-none"/>
+          </div>
+        </div>
+
+        <!-- По частям -->
+        <div id="def-parts-wrap" class="hidden space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-700 mb-1">
+                Количество выплат
+              </label>
+              <input title="Количество выплат" type="number" id="def-parts-count"
+                     min="2" max="52" value="4"
+                     oninput="updateDeficitPartsPreview()"
+                     class="w-full border border-slate-200 rounded p-2.5
+                            text-sm outline-none focus:ring-2
+                            focus:ring-blue-500 font-mono"/>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-700 mb-1">
+                Период выплат
+              </label>
+              <select title="Период выплат" id="def-parts-period"
+                      onchange="updateDeficitPartsPreview()"
+                      class="w-full border border-slate-200 rounded p-2.5
+                             text-sm outline-none focus:ring-2
+                             focus:ring-blue-500 bg-white">
+                <option value="weeks">Недели</option>
+                <option value="months">Месяцы</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">
+              Дата первой выплаты
+            </label>
+            <input title="Дата первой выплаты" type="date" id="def-parts-start-date"
+                   oninput="updateDeficitPartsPreview()"
+                   class="w-full border border-slate-200 rounded p-2.5
+                          text-sm outline-none focus:ring-2
+                          focus:ring-blue-500"/>
+          </div>
+
+          <!-- Авто-расчёт суммы -->
+          <div id="def-parts-preview"
+               class="hidden p-3 bg-blue-50 border border-blue-100
+                      rounded-lg text-xs text-blue-700">
+          </div>
+        </div>
+
       </div>
       <div class="px-6 py-4 bg-slate-50 border-t border-slate-100
                   flex justify-end space-x-3">
@@ -341,56 +415,89 @@
                 class="text-slate-400 hover:text-slate-600 text-xl
                        font-bold leading-none">&times;</button>
       </div>
-      <div class="p-5 space-y-4">
+            <div class="p-5 space-y-4">
+
+        <!-- Режим: недели / месяцы -->
+        <div>
+          <label class="block tracking-wide uppercase text-slate-500
+                        text-[10px] font-bold mb-2">Период</label>
+          <div class="flex gap-2">
+            <button id="af-mode-weeks"
+                    onclick="setAutofillMode('weeks')"
+                    class="af-mode-btn active flex-1 py-2 rounded-lg border-2
+                           text-sm font-semibold transition-all">
+                    На недели
+            </button>
+            <button id="af-mode-months"
+                    onclick="setAutofillMode('months')"
+                    class="af-mode-btn flex-1 py-2 rounded-lg border-2
+                           text-sm font-semibold transition-all">
+                    На месяцы
+            </button>
+          </div>
+        </div>
+
+        <!-- Начальная дата -->
         <div>
           <label class="block tracking-wide uppercase text-slate-500
                         text-[10px] font-bold mb-1">
             Начальная дата
           </label>
-          <input
-            title="Начальная дата"
-            type="date"
-            id="autofill-start-date"
-            class="w-full border border-slate-200 rounded p-2 text-sm
-                   outline-none focus:ring-1 focus:ring-blue-500 bg-slate-50"
-          />
+          <input title="Начальная дата" type="date" id="autofill-start-date"
+                 class="w-full border border-slate-200 rounded p-2 text-sm
+                        outline-none focus:ring-1 focus:ring-blue-500 bg-slate-50"/>
           <p id="autofill-week-hint"
              class="text-[10px] text-slate-500 mt-1 hidden"></p>
         </div>
+
+        <!-- День месяца (только для режима месяцев) -->
+        <div id="af-day-of-month-wrap" class="hidden">
+          <label class="block tracking-wide uppercase text-slate-500
+                        text-[10px] font-bold mb-1">
+            День месяца (день выплаты)
+          </label>
+          <input title="День месяца" type="number" id="autofill-day-of-month"
+                 min="1" max="31" value="1"
+                 class="w-full border border-slate-200 rounded p-2 text-sm
+                        outline-none focus:ring-1 focus:ring-blue-500 bg-slate-50"/>
+          <p class="text-[10px] text-slate-400 mt-1">
+            Если дня нет в месяце — берётся последний день
+          </p>
+        </div>
+
+        <!-- Количество -->
         <div>
           <label class="block tracking-wide uppercase text-slate-500
                         text-[10px] font-bold mb-1">
-            Количество недель
+            <span id="af-count-label">Количество недель</span>
           </label>
-          <input
-            title="Количество недель вперед для автозаполнения"
-            type="number"
-            id="autofill-weeks"
-            min="1" max="52"
-            value="12"
-            class="w-full border border-slate-200 rounded p-2 text-sm
-                   outline-none focus:ring-1 focus:ring-blue-500 bg-slate-50"
-          />
+          <input title="Количество недель" type="number" id="autofill-weeks"
+                 min="1" max="52" value="12"
+                 class="w-full border border-slate-200 rounded p-2 text-sm
+                        outline-none focus:ring-1 focus:ring-blue-500 bg-slate-50"/>
         </div>
+
+        <!-- Сумма -->
         <div>
           <label class="block tracking-wide uppercase text-slate-500
-                        text-[10px] font-bold mb-1">
-            Сумма (План)
-          </label>
-          <input
-            type="number"
-            id="autofill-amount"
-            placeholder="0.00"
-            class="w-full border border-slate-200 rounded p-2 text-sm
-                   outline-none focus:ring-1 focus:ring-blue-500 bg-slate-50
-                   font-mono"
-          />
+                        text-[10px] font-bold mb-1">Сумма (план)</label>
+          <input type="number" id="autofill-amount"
+                 placeholder="0.00"
+                 class="w-full border border-slate-200 rounded p-2 text-sm
+                        outline-none focus:ring-1 focus:ring-blue-500
+                        bg-slate-50 font-mono"/>
         </div>
-        <button
-          onclick="submitAutofill()"
-          class="w-full bg-blue-600 text-white font-bold text-xs uppercase
-                 tracking-wide py-3 rounded hover:bg-blue-700 transition"
-        >
+
+        <!-- Превью -->
+        <div id="af-preview"
+             class="hidden text-xs text-slate-600 bg-slate-50
+                    border border-slate-200 rounded-lg p-3">
+        </div>
+
+        <button onclick="submitAutofill()"
+                class="w-full bg-blue-600 text-white font-bold text-xs
+                       uppercase tracking-wide py-3 rounded
+                       hover:bg-blue-700 transition">
           Заполнить
         </button>
       </div>

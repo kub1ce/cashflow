@@ -17,11 +17,22 @@ const Deficit = {
   weekStart: null,
   weekEnd:   null,
   amount:    0,
+  mode:      'single',  // 'single' | 'parts'
 };
 
 const Autofill = {
   categoryId: null,
+  mode:       'weeks',  // 'weeks' | 'months'
 };
+
+// Системные категории — нельзя удалять
+const PROTECTED_CATS = [
+  'Незапланированные расходы',
+  'Незапланированные доходы',
+  'Возврат займа',
+  'Покрытие из копилки',
+  'Займ',
+];
 
 // ══════════════════════════════════════════════════════════════
 // УТИЛИТЫ
@@ -354,10 +365,9 @@ function refreshCellContent(td, plans, facts) {
 
 // ── Inline редактор ────────────────────────────────────────────────────────────
 function openCellEditor(td, initialMode) {
-  // Закрываем предыдущий
-  closeActiveCellEditor();
+  closeActiveCellEditor(true);
 
-  const catId    = parseInt(td.dataset.categoryId);
+  const catId     = parseInt(td.dataset.categoryId);
   const weekStart = td.dataset.weekStart;
   const weekEnd   = td.dataset.weekEnd;
   const key       = `${catId}:${weekStart}`;
@@ -367,27 +377,23 @@ function openCellEditor(td, initialMode) {
 
   App.editing = { categoryId: catId, weekStart, weekEnd, mode: initialMode, el: td };
 
-  // Начальное значение
   let initVal = '';
   if (initialMode === 'fact' && factTotal) initVal = factTotal.toString();
-  else if (initialMode === 'plan' && plan)  initVal = plan.amount.toString();
+  else if (initialMode === 'plan' && plan) initVal = plan.amount.toString();
 
-  // Строим редактор
   const editor = document.createElement('div');
   editor.className = 'cell-editor';
   editor.id        = 'active-cell-editor';
 
+  // ВАЖНО: блокируем всплытие клика, чтобы ячейка таблицы не переоткрывала редактор
+  editor.addEventListener('click', e => e.stopPropagation());
+
   editor.innerHTML = `
     <div class="cell-editor-tabs">
-      <button class="cell-editor-tab ${initialMode === 'plan' ? 'active' : ''}"
-              data-mode="plan"
-              onmousedown="event.preventDefault(); setCellEditorMode('plan')">
+      <button class="cell-editor-tab ${initialMode === 'plan' ? 'active' : ''}" data-mode="plan" type="button">
         План
       </button>
-      <span style="color:#e2e8f0">|</span>
-      <button class="cell-editor-tab ${initialMode === 'fact' ? 'active' : ''}"
-              data-mode="fact"
-              onmousedown="event.preventDefault(); setCellEditorMode('fact')">
+      <button class="cell-editor-tab ${initialMode === 'fact' ? 'active' : ''}" data-mode="fact" type="button">
         Факт
       </button>
     </div>
@@ -396,7 +402,13 @@ function openCellEditor(td, initialMode) {
       type="text"
       value="${initVal}"
       autocomplete="off"
-    />`;
+      placeholder="0"
+      oninput="this.value = this.value.replace(/[^0-9.,]/g, '')"
+    />
+    <div class="cell-editor-actions">
+      <button type="button" class="cell-editor-cancel">✕</button>
+      <button type="button" class="cell-editor-confirm">ОК</button>
+    </div>`;
 
   td.style.position = 'relative';
   td.appendChild(editor);
@@ -405,31 +417,61 @@ function openCellEditor(td, initialMode) {
   input.focus();
   input.select();
 
-  input.addEventListener('blur',    () => saveCellEditor());
+  // Назначаем события кнопкам
+  editor.querySelector('.cell-editor-cancel').addEventListener('click', () => {
+    closeActiveCellEditor(true);
+  });
+  
+  editor.querySelector('.cell-editor-confirm').addEventListener('click', () => {
+    saveCellEditor();
+  });
+
+  // Переключение вкладок без потери введённого значения
+  editor.querySelectorAll('.cell-editor-tab').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      App.editing.mode = e.target.dataset.mode;
+      editor.querySelectorAll('.cell-editor-tab').forEach(t => t.classList.remove('active'));
+      e.target.classList.add('active');
+      input.focus(); // Возвращаем фокус в поле ввода
+    });
+  });
+
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter')  { e.preventDefault(); saveCellEditor(); }
     if (e.key === 'Escape') { e.preventDefault(); closeActiveCellEditor(true); }
   });
+
+  // Клик вне редактора — закрываем БЕЗ сохранения
+  setTimeout(() => {
+    document.addEventListener('click', onOutsideClick);
+  }, 0);
 }
 
-function setCellEditorMode(mode) {
-  App.editing.mode = mode;
-  document.querySelectorAll('.cell-editor-tab').forEach(t => {
-    t.classList.toggle('active', t.dataset.mode === mode);
-  });
+function onOutsideClick(e) {
+  const editor = document.getElementById('active-cell-editor');
+  if (!editor) {
+    document.removeEventListener('click', onOutsideClick);
+    return;
+  }
+  // Если кликнули мимо редактора — закрываем
+  if (!editor.contains(e.target)) {
+    document.removeEventListener('click', onOutsideClick);
+    closeActiveCellEditor(true);
+  }
 }
 
 function closeActiveCellEditor(cancel = false) {
+  document.removeEventListener('click', onOutsideClick);
   const editor = document.getElementById('active-cell-editor');
   if (editor) {
     editor.remove();
   }
   if (cancel && App.editing.el) {
+    // Возвращаем ячейке прежний вид
     refreshCellContent(App.editing.el, App.data?.plans, App.data?.facts);
   }
   App.editing = {
-    categoryId: null, weekStart: null,
-    weekEnd: null, mode: 'plan', el: null,
+    categoryId: null, weekStart: null, weekEnd: null, mode: 'plan', el: null,
   };
 }
 
@@ -755,58 +797,134 @@ async function onDragEnd() {
 // AUTOFILL
 // ══════════════════════════════════════════════════════════════
 
+function setAutofillMode(mode) {
+  Autofill.mode = mode;
+
+  // Кнопки
+  document.getElementById('af-mode-weeks')
+    .classList.toggle('active', mode === 'weeks');
+  document.getElementById('af-mode-months')
+    .classList.toggle('active', mode === 'months');
+
+  // День месяца
+  document.getElementById('af-day-of-month-wrap')
+    .classList.toggle('hidden', mode === 'weeks');
+
+  // Лейбл количества
+  document.getElementById('af-count-label').textContent =
+    mode === 'weeks' ? 'Количество недель' : 'Количество месяцев';
+
+  // Максимум
+  document.getElementById('autofill-weeks').max =
+    mode === 'weeks' ? 52 : 24;
+
+  updateAutofillPreview();
+}
+
 function openAutofill(event, categoryId) {
   event.stopPropagation();
   Autofill.categoryId = categoryId;
+  Autofill.mode       = 'weeks';
 
   const cat = App.data.categories.find(c => c.id === categoryId);
   document.getElementById('autofill-cat-name').textContent = cat?.name || '';
 
-  // Начальная дата = понедельник текущей недели
+  // Сброс формы
+  setAutofillMode('weeks');
   const monday = getMondayOf(getTodayISO());
-  document.getElementById('autofill-start-date').value = monday;
-  document.getElementById('autofill-weeks').value       = 12;
-  document.getElementById('autofill-amount').value      = '';
+  document.getElementById('autofill-start-date').value  = monday;
+  document.getElementById('autofill-weeks').value        = 12;
+  document.getElementById('autofill-amount').value       = '';
+  document.getElementById('autofill-day-of-month').value = 1;
   document.getElementById('autofill-week-hint').classList.add('hidden');
+  document.getElementById('af-preview').classList.add('hidden');
 
   showModal('autofill-modal');
+  setTimeout(() => document.getElementById('autofill-amount').focus(), 100);
 }
 
 function closeAutofillModal() {
   hideModal('autofill-modal');
+  Autofill.categoryId = null;
+}
+
+function updateAutofillPreview() {
+  const startVal  = document.getElementById('autofill-start-date').value;
+  const count     = parseInt(document.getElementById('autofill-weeks').value) || 0;
+  const amount    = parseFloat(document.getElementById('autofill-amount').value) || 0;
+  const dayOfMonth= parseInt(document.getElementById('autofill-day-of-month').value) || 1;
+  const preview   = document.getElementById('af-preview');
+
+  if (!startVal || count <= 0 || amount <= 0) {
+    preview.classList.add('hidden');
+    return;
+  }
+
+  const mode = Autofill.mode;
+
+  if (mode === 'weeks') {
+    const monday  = getMondayOf(startVal);
+    const endDate = new Date(monday + 'T00:00:00');
+    endDate.setDate(endDate.getDate() + (count - 1) * 7 + 6);
+
+    preview.innerHTML = `
+      Будет проставлено <strong>${formatAmount(amount)} ₽</strong>
+      на <strong>${count}</strong> ${pluralWeeks(count)}<br>
+      Итого: <strong>${formatAmount(amount * count)} ₽</strong>`;
+  } else {
+    preview.innerHTML = `
+      Будет проставлено <strong>${formatAmount(amount)} ₽</strong>
+      каждый месяц <strong>${count}</strong> раз<br>
+      (${dayOfMonth}-го числа каждого месяца)<br>
+      Итого: <strong>${formatAmount(amount * count)} ₽</strong>`;
+  }
+
+  preview.classList.remove('hidden');
 }
 
 // Подсказка какая неделя будет выбрана
 document.getElementById('autofill-start-date')
   ?.addEventListener('change', function() {
-    const val   = this.value;
-    const hint  = document.getElementById('autofill-week-hint');
+    const val  = this.value;
+    const hint = document.getElementById('autofill-week-hint');
     if (!val || !App.data) { hint.classList.add('hidden'); return; }
 
     const monday = getMondayOf(val);
     const week   = App.data.weeks.find(w => w.week_start === monday);
     if (week) {
-      hint.textContent = `Начнётся с: ${week.label}`;
+      hint.textContent = `Начнётся с: Неделя ${week.week_number} (${week.label})`;
       hint.classList.remove('hidden');
     }
+    updateAutofillPreview();
   });
+
+document.getElementById('autofill-weeks')
+  ?.addEventListener('input', updateAutofillPreview);
+document.getElementById('autofill-amount')
+  ?.addEventListener('input', updateAutofillPreview);
+document.getElementById('autofill-day-of-month')
+  ?.addEventListener('input', updateAutofillPreview);
 
 async function submitAutofill() {
   const startDate  = document.getElementById('autofill-start-date').value;
-  const weeksCount = parseInt(document.getElementById('autofill-weeks').value);
+  const count      = parseInt(document.getElementById('autofill-weeks').value);
   const amount     = parseFloat(document.getElementById('autofill-amount').value);
+  const dayOfMonth = parseInt(document.getElementById('autofill-day-of-month').value) || 1;
 
-  if (!startDate)           { showToast('Укажите начальную дату', 'error'); return; }
-  if (!weeksCount || weeksCount <= 0) { showToast('Укажите количество недель', 'error'); return; }
-  if (!amount || amount <= 0) { showToast('Укажите сумму', 'error'); return; }
+  if (!startDate)           { showToast('Укажите начальную дату', 'error');    return; }
+  if (!count || count <= 0) { showToast('Укажите количество', 'error');         return; }
+  if (!amount || amount <= 0){ showToast('Укажите сумму', 'error');             return; }
 
   try {
     const result = await pywebview.api.autofill({
       category_id:  Autofill.categoryId,
       start_date:   startDate,
-      weeks_count:  weeksCount,
       amount,
+      mode:         Autofill.mode,
+      count,
+      day_of_month: dayOfMonth,
     });
+
     if (result.success) {
       closeAutofillModal();
       showToast(`Заполнено ${result.filled} ${pluralWeeks(result.filled)}`, 'success');
@@ -828,6 +946,44 @@ document.getElementById('autofill-modal')
 // КАССОВЫЙ РАЗРЫВ
 // ══════════════════════════════════════════════════════════════
 
+function setDeficitMode(mode) {
+  Deficit.mode = mode;
+
+  document.getElementById('def-mode-single')
+    .classList.toggle('active', mode === 'single');
+  document.getElementById('def-mode-parts')
+    .classList.toggle('active', mode === 'parts');
+
+  document.getElementById('def-single-wrap')
+    .classList.toggle('hidden', mode !== 'single');
+  document.getElementById('def-parts-wrap')
+    .classList.toggle('hidden', mode !== 'parts');
+
+  if (mode === 'parts') updateDeficitPartsPreview();
+}
+
+function updateDeficitPartsPreview() {
+  const count     = parseInt(document.getElementById('def-parts-count').value) || 0;
+  const period    = document.getElementById('def-parts-period').value;
+  const startDate = document.getElementById('def-parts-start-date').value;
+  const preview   = document.getElementById('def-parts-preview');
+
+  if (!count || count < 2 || !startDate) {
+    preview.classList.add('hidden');
+    return;
+  }
+
+  const perPayment = Deficit.amount / count;
+  const periodLabel = period === 'weeks'
+    ? `${count} ${pluralWeeks(count)}`
+    : `${count} мес.`;
+
+  preview.innerHTML = `
+    Сумма каждой выплаты: <strong>${formatAmount(perPayment)} ₽</strong><br>
+    Период: <strong>${periodLabel}</strong> начиная с выбранной даты`;
+  preview.classList.remove('hidden');
+}
+
 async function handleDeficit(event, weekStart, weekEnd, deficitAmount) {
   event.stopPropagation();
   if (!App.data) return;
@@ -836,6 +992,7 @@ async function handleDeficit(event, weekStart, weekEnd, deficitAmount) {
   Deficit.weekStart = weekStart;
   Deficit.weekEnd   = weekEnd;
   Deficit.amount    = deficitAmount;
+  Deficit.mode      = 'single';
 
   if (strategy === 'manual') {
     showToast('Ручное управление: автодействия отключены', 'info');
@@ -862,11 +1019,20 @@ async function handleDeficit(event, weekStart, weekEnd, deficitAmount) {
     document.getElementById('deficit-amount-display').textContent =
       `${formatAmount(deficitAmount)} ₽`;
 
-    // Дата возврата: +4 недели от weekStart
+    // Сброс формы
+    setDeficitMode('single');
+
+    // Дата возврата по умолчанию: +4 недели
     const ret = new Date(weekStart + 'T00:00:00');
     ret.setDate(ret.getDate() + 28);
     document.getElementById('deficit-return-date').value =
       ret.toISOString().split('T')[0];
+
+    // Дата первой выплаты по умолчанию = та же
+    document.getElementById('def-parts-start-date').value =
+      ret.toISOString().split('T')[0];
+    document.getElementById('def-parts-count').value = 4;
+    document.getElementById('def-parts-preview').classList.add('hidden');
 
     showModal('deficit-modal');
   }
@@ -877,26 +1043,64 @@ function closeDeficitModal() {
 }
 
 async function submitDeficit() {
-  const returnDate = document.getElementById('deficit-return-date').value;
-  if (!returnDate) { showToast('Укажите дату возврата', 'error'); return; }
+  if (Deficit.mode === 'single') {
+    // Единовременный возврат (текущая логика)
+    const returnDate = document.getElementById('deficit-return-date').value;
+    if (!returnDate) { showToast('Укажите дату возврата', 'error'); return; }
 
-  try {
-    const result = await pywebview.api.handle_deficit({
-      week_start:  Deficit.weekStart,
-      week_end:    Deficit.weekEnd,
-      deficit:     Deficit.amount,
-      strategy:    'credit_first',
-      return_date: returnDate,
-    });
-    if (result.success) {
-      closeDeficitModal();
-      showToast('Займ оформлен, возврат запланирован', 'success');
-      await reloadData();
-    } else {
-      showToast('Ошибка: ' + result.error, 'error');
+    try {
+      const result = await pywebview.api.handle_deficit({
+        week_start:  Deficit.weekStart,
+        week_end:    Deficit.weekEnd,
+        deficit:     Deficit.amount,
+        strategy:    'credit_first',
+        return_date: returnDate,
+      });
+      if (result.success) {
+        closeDeficitModal();
+        showToast('Займ оформлен, возврат запланирован', 'success');
+        await reloadData();
+      } else {
+        showToast('Ошибка: ' + result.error, 'error');
+      }
+    } catch (e) {
+      showToast('Ошибка соединения', 'error');
     }
-  } catch (e) {
-    showToast('Ошибка соединения', 'error');
+
+  } else {
+    // Возврат по частям
+    const count     = parseInt(document.getElementById('def-parts-count').value);
+    const period    = document.getElementById('def-parts-period').value;
+    const startDate = document.getElementById('def-parts-start-date').value;
+
+    if (!count || count < 2) {
+      showToast('Укажите количество выплат (минимум 2)', 'error'); return;
+    }
+    if (!startDate) {
+      showToast('Укажите дату первой выплаты', 'error'); return;
+    }
+
+    try {
+      const result = await pywebview.api.handle_deficit({
+        week_start:       Deficit.weekStart,
+        week_end:         Deficit.weekEnd,
+        deficit:          Deficit.amount,
+        strategy:         'credit_first',
+        repayment_mode:   'parts',
+        parts_count:      count,
+        parts_period:     period,
+        parts_start_date: startDate,
+      });
+      if (result.success) {
+        closeDeficitModal();
+        showToast(`Займ оформлен, ${count} выплат запланировано`, 'success');
+        await reloadData();
+      } else {
+        showToast('Ошибка: ' + result.error, 'error');
+      }
+    } catch (e) {
+      showToast('Ошибка соединения', 'error');
+    }
   }
 }
 
@@ -1237,31 +1441,22 @@ function renderSettingsCategoryList(cats, container) {
       </div>
 
       <div class="flex items-center gap-1 shrink-0">
-        <button class="settings-icon-btn"
-                onclick="startCategoryEdit(${cat.id})"
-                title="Переименовать">
-          <!-- Edit icon -->
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
-               stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round"
-              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5
-                 m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586
-                 -8.586z"/>
-          </svg>
-        </button>
-        ${cat.is_custom ? `
+        ${!PROTECTED_CATS.includes(cat.name) ? `
+          <button class="settings-icon-btn"
+                  onclick="startCategoryEdit(${cat.id})"
+                  title="Переименовать">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+          </button>
           <button class="settings-icon-btn danger"
                   onclick="deleteCategorySettings(${cat.id}, '${cat.name.replace(/'/g, "\\'")}')"
                   title="Удалить">
-            <!-- Trash icon -->
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
-                 stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0
-                   01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1
-                   1 0 00-1 1v3M4 7h16"/>
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
             </svg>
-          </button>` : ''}
+          </button>
+        ` : ''}
       </div>`;
 
     container.appendChild(item);

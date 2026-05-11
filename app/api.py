@@ -7,6 +7,14 @@ from sqlalchemy import and_
 from app.database import SessionLocal
 from app.models import Settings, Account, Category, Plan, Fact
 
+# Системные категории которые нельзя удалять
+PROTECTED_CATEGORIES = {
+    'Незапланированные расходы',
+    'Незапланированные доходы',
+    'Возврат займа',
+    'Покрытие из копилки',
+    'Займ',
+}
 
 class API:
 
@@ -193,6 +201,14 @@ class API:
             ).first()
             if not cat:
                 return {'success': False, 'error': 'Категория не найдена'}
+
+            # Защита системных категорий
+            if cat.name in PROTECTED_CATEGORIES:
+                return {
+                    'success': False,
+                    'error':   f'Категорию «{cat.name}» нельзя удалить, '
+                            f'только переименовать'
+                }
 
             db.query(Plan).filter(Plan.category_id == int(category_id)).delete()
             db.query(Fact).filter(Fact.category_id == int(category_id)).delete()
@@ -397,28 +413,93 @@ class API:
 
     # ── Автозаполнение ────────────────────────────────────────────────────────
     def autofill(self, data: dict) -> dict:
+        """
+        data = {
+            category_id:  1,
+            start_date:   'YYYY-MM-DD',
+            amount:       50000,
+            mode:         'weeks' | 'months',
+            count:        6,        # кол-во недель ИЛИ месяцев
+            day_of_month: 10,       # только для mode='months'
+        }
+        """
         db = SessionLocal()
         try:
-            category_id = int(data['category_id'])
-            start_date  = data['start_date']
-            weeks_count = int(data['weeks_count'])
-            amount      = float(data['amount'])
+            category_id  = int(data['category_id'])
+            start_date   = data['start_date']
+            amount       = float(data['amount'])
+            mode         = data.get('mode', 'weeks')
+            count        = int(data['count'])
+            day_of_month = int(data.get('day_of_month', 1))
 
-            if weeks_count <= 0:
-                return {'success': False, 'error': 'Количество недель > 0'}
+            if count <= 0:
+                return {'success': False, 'error': 'Количество должно быть > 0'}
             if amount < 0:
                 return {'success': False, 'error': 'Сумма не может быть отрицательной'}
 
-            week_start = self._get_monday(start_date)
+            # Генерируем список дат для заполнения
+            target_dates = []
+
+            if mode == 'weeks':
+                # Каждую неделю начиная с понедельника start_date
+                week_start = self._get_monday(start_date)
+                for i in range(count):
+                    target_dates.append(week_start + timedelta(weeks=i))
+
+            elif mode == 'months':
+                # Каждый месяц в указанный день
+                start = date.fromisoformat(start_date)
+                year  = start.year
+                month = start.month
+
+                for i in range(count):
+                    # Последний день месяца
+                    if month == 12:
+                        last_day = 31
+                    else:
+                        last_day = (date(year, month + 1, 1) - timedelta(days=1)).day
+
+                    # Берём указанный день или последний если не существует
+                    actual_day = min(day_of_month, last_day)
+                    target_dates.append(date(year, month, actual_day))
+
+                    # Следующий месяц
+                    month += 1
+                    if month > 12:
+                        month = 1
+                        year  += 1
+
+            # Для каждой даты находим неделю и ставим план
+            # Если несколько дат попали в одну неделю — суммируем
+            week_amounts: dict = {}
+            for target_date in target_dates:
+                monday = self._get_monday(target_date.isoformat())
+                sunday = monday + timedelta(days=6)
+                key    = monday.isoformat()
+
+                if key not in week_amounts:
+                    week_amounts[key] = {
+                        'week_start': monday.isoformat(),
+                        'week_end':   sunday.isoformat(),
+                        'amount':     0,
+                    }
+                week_amounts[key]['amount'] += amount
+
+            # Сохраняем планы
             filled = 0
-            for i in range(weeks_count):
-                cs = week_start + timedelta(weeks=i)
-                ce = cs + timedelta(days=6)
-                self._upsert_plan(db, category_id, cs.isoformat(), ce.isoformat(), amount)
+            for wk in week_amounts.values():
+                self._upsert_plan(
+                    db,
+                    category_id,
+                    wk['week_start'],
+                    wk['week_end'],
+                    wk['amount'],
+                )
                 filled += 1
 
             db.commit()
             return {'success': True, 'filled': filled}
+
         except Exception as e:
             db.rollback()
             return {'success': False, 'error': str(e)}
@@ -442,35 +523,88 @@ class API:
                 self._upsert_plan(db, cat.id, week_start, week_end, deficit)
 
             elif strategy == 'credit_first':
-                if not return_date:
-                    return {'success': False, 'error': 'Укажите дату возврата'}
+                repayment_mode   = data.get('repayment_mode', 'single')
+                return_date      = data.get('return_date')
+                parts_count      = int(data.get('parts_count', 1))
+                parts_period     = data.get('parts_period', 'weeks')
+                parts_start_date = data.get('parts_start_date')
 
+                # Займ: доход на текущей неделе
                 loan_cat = self._get_or_create_system_category(
                     db, 'Займ', 'income', '#f59e0b'
                 )
                 self._upsert_plan(db, loan_cat.id, week_start, week_end, deficit)
 
-                return_monday = self._get_monday(return_date)
-                return_sunday = return_monday + timedelta(days=6)
-                return_cat    = self._get_or_create_system_category(
+                # Категория возврата
+                return_cat = self._get_or_create_system_category(
                     db, 'Возврат займа', 'expense', '#ef4444'
                 )
 
-                existing = db.query(Plan).filter(
-                    and_(
-                        Plan.category_id     == return_cat.id,
-                        Plan.week_start_date == return_monday.isoformat(),
-                    )
-                ).first()
-                if existing:
-                    existing.amount += deficit
-                else:
-                    db.add(Plan(
-                        category_id     = return_cat.id,
-                        week_start_date = return_monday.isoformat(),
-                        week_end_date   = return_sunday.isoformat(),
-                        amount          = deficit,
-                    ))
+                if repayment_mode == 'single':
+                    # Единовременный возврат
+                    if not return_date:
+                        return {'success': False, 'error': 'Укажите дату возврата'}
+
+                    return_monday = self._get_monday(return_date)
+                    return_sunday = return_monday + timedelta(days=6)
+
+                    existing = db.query(Plan).filter(
+                        and_(
+                            Plan.category_id     == return_cat.id,
+                            Plan.week_start_date == return_monday.isoformat(),
+                        )
+                    ).first()
+                    if existing:
+                        existing.amount += deficit
+                    else:
+                        db.add(Plan(
+                            category_id     = return_cat.id,
+                            week_start_date = return_monday.isoformat(),
+                            week_end_date   = return_sunday.isoformat(),
+                            amount          = deficit,
+                        ))
+
+                elif repayment_mode == 'parts':
+                    # Возврат по частям
+                    if not parts_start_date or parts_count < 2:
+                        return {'success': False, 'error': 'Укажите дату и количество выплат'}
+
+                    per_payment = deficit / parts_count
+                    start       = date.fromisoformat(parts_start_date)
+
+                    for i in range(parts_count):
+                        if parts_period == 'weeks':
+                            payment_date  = start + timedelta(weeks=i)
+                        else:
+                            # Месяцы
+                            month = start.month + i
+                            year  = start.year + (month - 1) // 12
+                            month = ((month - 1) % 12) + 1
+                            if month == 12:
+                                last_day = 31
+                            else:
+                                last_day = (date(year, month + 1, 1) - timedelta(days=1)).day
+                            actual_day   = min(start.day, last_day)
+                            payment_date = date(year, month, actual_day)
+
+                        payment_monday = self._get_monday(payment_date.isoformat())
+                        payment_sunday = payment_monday + timedelta(days=6)
+
+                        existing = db.query(Plan).filter(
+                            and_(
+                                Plan.category_id     == return_cat.id,
+                                Plan.week_start_date == payment_monday.isoformat(),
+                            )
+                        ).first()
+                        if existing:
+                            existing.amount += per_payment
+                        else:
+                            db.add(Plan(
+                                category_id     = return_cat.id,
+                                week_start_date = payment_monday.isoformat(),
+                                week_end_date   = payment_sunday.isoformat(),
+                                amount          = per_payment,
+                            ))
             else:
                 return {'success': False, 'error': 'Неизвестная стратегия'}
 

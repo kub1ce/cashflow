@@ -276,36 +276,42 @@ body {
   z-index: 20;
   display: flex;
   flex-direction: column;
-  padding: 4px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
+  padding: 5px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  border: 1.5px solid #93c5fd;
+  border-radius: 6px;
+  gap: 4px;
+  min-width: 130px;
 }
 
 .cell-editor-tabs {
   display: flex;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: #94a3b8;
-  margin-bottom: 4px;
-  justify-content: center;
-  gap: 8px;
+  background: #f1f5f9;
+  border-radius: 5px;
+  padding: 2px;
+  gap: 2px;
 }
 
 .cell-editor-tab {
+  flex: 1;
   cursor: pointer;
   border: none;
-  background: none;
-  font-size: 10px;
-  font-weight: 700;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: #94a3b8;
-  padding: 0;
+  padding: 3px 6px;
+  border-radius: 4px;
+  transition: all 0.15s;
+  font-family: inherit;
 }
 
 .cell-editor-tab.active {
+  background: white;
   color: #2563eb;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .cell-editor-tab:hover:not(.active) {
@@ -314,19 +320,67 @@ body {
 
 .cell-editor input {
   width: 100%;
-  border: 1px solid #93c5fd;
-  border-radius: 4px;
-  padding: 2px 4px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 5px;
+  padding: 4px 6px;
   text-align: right;
   font-size: 13px;
   outline: none;
   font-variant-numeric: tabular-nums;
   font-family: inherit;
+  color: #1e293b;
+  transition: border-color 0.15s;
 }
 
 .cell-editor input:focus {
   border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+}
+
+/* Кнопки подтверждения/отмены */
+.cell-editor-actions {
+  display: flex;
+  gap: 3px;
+}
+
+.cell-editor-cancel {
+  flex: 0 0 28px;
+  height: 26px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 5px;
+  background: white;
+  color: #94a3b8;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.cell-editor-cancel:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #ef4444;
+}
+
+.cell-editor-confirm {
+  flex: 1;
+  height: 26px;
+  border: none;
+  border-radius: 5px;
+  background: #2563eb;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: inherit;
+}
+
+.cell-editor-confirm:hover {
+  background: #1d4ed8;
 }
 
 /* Значения план/факт */
@@ -660,4 +714,39 @@ input[type=number]::-webkit-outer-spin-button {
 .row-balance td {
   /* Явный непрозрачный фон — задаётся через JS */
   opacity: 1 !important;
+}
+
+/* Кнопки режима автозаполнения */
+.af-mode-btn {
+  border-color: #e2e8f0;
+  color: #64748b;
+  background: white;
+}
+
+.af-mode-btn:hover {
+  border-color: #93c5fd;
+  color: #2563eb;
+}
+
+.af-mode-btn.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.def-mode-btn {
+  border-color: #e2e8f0;
+  color: #64748b;
+  background: white;
+}
+
+.def-mode-btn:hover {
+  border-color: #93c5fd;
+  color: #2563eb;
+}
+
+.def-mode-btn.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
 }
