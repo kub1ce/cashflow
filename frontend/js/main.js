@@ -90,24 +90,47 @@ function pluralWeeks(n) {
 }
 
 /**
- * Определяет нужен ли тёмный или светлый текст
- * для заданного цвета фона.
- * Возвращает '#0f172a' (тёмный) или '#ffffff' (светлый)
+ * Определяет нужен ли тёмный или светлый текст для заданного цвета фона.
+ * Поддерживает и #hex, и rgb(...), и rgba(...)
  */
-function getContrastColor(hexColor) {
-  // Убираем # если есть
-  const hex = hexColor.replace('#', '');
+function getContrastColor(color) {
+  if (!color) return '#0f172a';
 
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
+  let r, g, b;
 
-  // Формула относительной яркости (WCAG)
+  // Если цвет в hex формате
+  if (color.startsWith('#')) {
+    let hex = color.slice(1);
+    if (hex.length === 3) {
+      hex = hex.split('').map(ch => ch + ch).join('');
+    }
+    if (hex.length !== 6) return '#0f172a';
+    
+    r = parseInt(hex.slice(0, 2), 16);
+    g = parseInt(hex.slice(2, 4), 16);
+    b = parseInt(hex.slice(4, 6), 16);
+  } 
+  // Если цвет в rgb/rgba формате (то, что возвращает WebView)
+  else {
+    const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+    if (!match) return '#0f172a';
+    
+    r = parseInt(match[1], 10);
+    g = parseInt(match[2], 10);
+    b = parseInt(match[3], 10);
+  }
+
+  // Формула расчёта яркости (WCAG)
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-
-  // Если фон светлый — тёмный текст, и наоборот
+  
   return luminance > 0.5 ? '#0f172a' : '#ffffff';
-} 
+}
+
+function isUndoShortcut(e) {
+  return (e.ctrlKey || e.metaKey) &&
+         !e.shiftKey &&
+         (e.code === 'KeyZ' || e.key === 'z' || e.key === 'Z' || e.key === 'я' || e.key === 'Я');
+}
 
 // ══════════════════════════════════════════════════════════════
 // ПЕРЕКЛЮЧЕНИЕ VIEWS
@@ -439,9 +462,9 @@ function openCellEditor(td, initialMode) {
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter')  { e.preventDefault(); saveCellEditor(); }
     if (e.key === 'Escape') { e.preventDefault(); closeActiveCellEditor(true); }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    if (isUndoShortcut(e)) {
       e.preventDefault();
-      closeActiveCellEditor(true);
+      e.stopPropagation();
       undoLastAction();
     }
   });
@@ -612,22 +635,20 @@ function recalcTotalsAndBalance() {
   if (!wt) return;
   running += wt.inc - wt.exp;
 
-    const inner = td.querySelector('.balance-cell-inner');
-    const isNeg = running < 0;
-    const cellBg = td.style.backgroundColor || getWeekColor();
-    const textColor = isNeg
-    ? (getVisualConfig().negativeBalanceColor || '#f87171')
-    : getContrastColor(cellBg);
-    const isCurrent = isCurrentWeek(week.week_start, week.week_end);
-    // Обновляем цвет фона
-    td.style.backgroundColor = isCurrent ? cwColor : weekColor;
+  const inner = td.querySelector('.balance-cell-inner');
+  const isNeg = running < 0;
+  const isCurrent = isCurrentWeek(week.week_start, week.week_end);
+  
+  // Сначала выставляем фон, потом по нему считаем контраст
+  const bgColor = isCurrent ? cwColor : weekColor;
+  td.style.backgroundColor = bgColor;
+  
+  const textColor = isNeg ? negColor : getContrastColor(bgColor);
 
   inner.innerHTML = `
     ${isNeg ? `
       <button class="wand-btn"
-        onclick="handleDeficit(event,'${wt.weekStart}',
-                 '${wt.weekStart}',
-                 ${Math.abs(running).toFixed(2)})"
+        onclick="handleDeficit(event,'${week.week_start}','${week.week_end}',${Math.abs(running).toFixed(2)})"
         title="Покрыть дефицит">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-magic" viewBox="0 0 16 16">
             <path d="M9.5 2.672a.5.5 0 1 0 1 0V.843a.5.5 0 0 0-1 0zm4.5.035A.5.5 0 0 0 13.293 2L12 3.293a.5.5 0 1 0 .707.707zM7.293 4A.5.5 0 1 0 8 3.293L6.707 2A.5.5 0 0 0 6 2.707zm-.621 2.5a.5.5 0 1 0 0-1H4.843a.5.5 0 1 0 0 1zm8.485 0a.5.5 0 1 0 0-1h-1.829a.5.5 0 0 0 0 1zM13.293 10A.5.5 0 1 0 14 9.293L12.707 8a.5.5 0 1 0-.707.707zM9.5 11.157a.5.5 0 0 0 1 0V9.328a.5.5 0 0 0-1 0zm1.854-5.097a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L8.646 5.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0l1.293-1.293Zm-3 3a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L.646 13.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0z"/>
@@ -1979,11 +2000,18 @@ function showToast(message, type = 'success') {
 
 async function reloadData() {
   try {
-    const data = await pywebview.api.get_cashflow_data();
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Timeout')), 10000)
+    );
+    
+    const data = await Promise.race([
+      pywebview.api.get_cashflow_data(),
+      timeoutPromise
+    ]);
+    
     if (data.error) { console.error('Ошибка данных:', data.error); return; }
     App.data = data;
     
-    // Явно перерисовываем в зависимости от текущего view
     if (App.activeView === 'dashboard') {
       renderTable(data);
     }
@@ -2063,6 +2091,7 @@ async function undoLastAction() {
     UndoHistory.push(action);
   } finally {
     _undoInProgress = false;
+    setTimeout(() => { _undoInProgress = false; }, 5000);
   }
 }
 
@@ -2097,12 +2126,11 @@ async function undoLoanRepayment(action) {
 }
 
 // Горячая клавиша Ctrl+Z — capture:true чтобы перехватить ДО input
-document.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-    e.preventDefault();
-    e.stopPropagation();
-    undoLastAction();
-  }
+window.addEventListener('keydown', (e) => {
+  if (!isUndoShortcut(e)) return;
+  e.preventDefault();
+  e.stopPropagation();
+  undoLastAction();
 }, true);
 
 // Закрываем редактор при потере фокуса окном (alt+tab и т.д.)
