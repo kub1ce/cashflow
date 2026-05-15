@@ -7,6 +7,8 @@ from sqlalchemy import and_
 from app.database import SessionLocal
 from app.models import Settings, Account, Category, Plan, Fact
 
+from webview import FileDialog
+
 # Системные категории которые нельзя удалять
 PROTECTED_CATEGORIES = {
     'Незапланированные расходы',
@@ -1038,7 +1040,7 @@ class API:
         """Открывает диалог сохранения файла"""
         try:
             result = self._window.create_file_dialog(
-                dialog_type=20,   # SAVE_DIALOG
+                FileDialog.SAVE,
                 save_filename=filename,
                 file_types=('JSON Files (*.json)', 'All Files (*.*)')
             )
@@ -1055,7 +1057,7 @@ class API:
         """Открывает диалог выбора файла и возвращает содержимое"""
         try:
             result = self._window.create_file_dialog(
-                dialog_type=10,   # OPEN_DIALOG
+                FileDialog.OPEN,
                 file_types=('JSON Files (*.json)', 'All Files (*.*)')
             )
             if result and len(result) > 0:
