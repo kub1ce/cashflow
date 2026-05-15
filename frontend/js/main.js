@@ -608,31 +608,32 @@ function recalcTotalsAndBalance() {
   const balanceCells = document.querySelectorAll('.row-balance td.balance-data-cell');
   balanceCells.forEach((td, i) => {
     const week = weeks[i];
-    const wt = weekTotals[i];
-    if (!wt) return;
-    running += wt.inc - wt.exp;
+  const wt = weekTotals[i];
+  if (!wt) return;
+  running += wt.inc - wt.exp;
 
     const inner = td.querySelector('.balance-cell-inner');
     const isNeg = running < 0;
+    const cellBg = td.style.backgroundColor || getWeekColor();
+    const textColor = isNeg
+    ? (getVisualConfig().negativeBalanceColor || '#f87171')
+    : getContrastColor(cellBg);
     const isCurrent = isCurrentWeek(week.week_start, week.week_end);
-
     // Обновляем цвет фона
     td.style.backgroundColor = isCurrent ? cwColor : weekColor;
 
-    inner.innerHTML = `
-      ${isNeg ? `
-        <button class="wand-btn"
-        onclick="handleDeficit(event,'${week.week_start}',
-                 '${week.week_end}',
+  inner.innerHTML = `
+    ${isNeg ? `
+      <button class="wand-btn"
+        onclick="handleDeficit(event,'${wt.weekStart}',
+                 '${wt.weekStart}',
                  ${Math.abs(running).toFixed(2)})"
         title="Покрыть дефицит">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-magic" viewBox="0 0 16 16">
             <path d="M9.5 2.672a.5.5 0 1 0 1 0V.843a.5.5 0 0 0-1 0zm4.5.035A.5.5 0 0 0 13.293 2L12 3.293a.5.5 0 1 0 .707.707zM7.293 4A.5.5 0 1 0 8 3.293L6.707 2A.5.5 0 0 0 6 2.707zm-.621 2.5a.5.5 0 1 0 0-1H4.843a.5.5 0 1 0 0 1zm8.485 0a.5.5 0 1 0 0-1h-1.829a.5.5 0 0 0 0 1zM13.293 10A.5.5 0 1 0 14 9.293L12.707 8a.5.5 0 1 0-.707.707zM9.5 11.157a.5.5 0 0 0 1 0V9.328a.5.5 0 0 0-1 0zm1.854-5.097a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L8.646 5.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0l1.293-1.293Zm-3 3a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L.646 13.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0z"/>
           </svg>
-        </button>` : ''}
-      <span style="color:${isNeg ? negColor : (isCurrent ? getContrastColor(cwColor) : getContrastColor(weekColor))}">
-        ${formatAmount(running)}
-      </span>`;
+      </button>` : ''}
+      <span style="color:${textColor}">${formatAmount(running)}</span>`;
   });
 }
 
@@ -1300,6 +1301,7 @@ async function submitReconcile() {
   const weekEnd    = calcEl.dataset.weekEnd;
 
   if (isNaN(actualVal)) { showToast('Введите фактический баланс', 'error'); return; }
+  else if (actualVal < 0) { showToast('Введите корректный баланс (≥ 0)', 'error'); return; }
 
   try {
     const result = await pywebview.api.reconcile_balance({
