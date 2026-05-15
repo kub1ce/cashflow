@@ -583,26 +583,30 @@ function recalcTotalsAndBalance() {
 
   const balanceCells = document.querySelectorAll('.row-balance td.balance-data-cell');
   balanceCells.forEach((td, i) => {
-    const wt = weekTotals[i];
-    if (!wt) return;
-    running += wt.inc - wt.exp;
+  const wt = weekTotals[i];
+  if (!wt) return;
+  running += wt.inc - wt.exp;
 
-    const inner = td.querySelector('.balance-cell-inner');
-    const isNeg = running < 0;
+  const inner = td.querySelector('.balance-cell-inner');
+  const isNeg = running < 0;
+  const cellBg = td.style.backgroundColor || getWeekColor();
+  const textColor = isNeg
+    ? (getVisualConfig().negativeBalanceColor || '#f87171')
+    : getContrastColor(cellBg);
 
-    inner.innerHTML = `
-      ${isNeg ? `
-        <button class="wand-btn"
-        onclick="handleDeficit(event,'${week.week_start}',
-                 '${week.week_end}',
+  inner.innerHTML = `
+    ${isNeg ? `
+      <button class="wand-btn"
+        onclick="handleDeficit(event,'${wt.weekStart}',
+                 '${wt.weekStart}',
                  ${Math.abs(running).toFixed(2)})"
         title="Покрыть дефицит">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-magic" viewBox="0 0 16 16">
-            <path d="M9.5 2.672a.5.5 0 1 0 1 0V.843a.5.5 0 0 0-1 0zm4.5.035A.5.5 0 0 0 13.293 2L12 3.293a.5.5 0 1 0 .707.707zM7.293 4A.5.5 0 1 0 8 3.293L6.707 2A.5.5 0 0 0 6 2.707zm-.621 2.5a.5.5 0 1 0 0-1H4.843a.5.5 0 1 0 0 1zm8.485 0a.5.5 0 1 0 0-1h-1.829a.5.5 0 0 0 0 1zM13.293 10A.5.5 0 1 0 14 9.293L12.707 8a.5.5 0 1 0-.707.707zM9.5 11.157a.5.5 0 0 0 1 0V9.328a.5.5 0 0 0-1 0zm1.854-5.097a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L8.646 5.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0l1.293-1.293Zm-3 3a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L.646 13.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0z"/>
-          </svg>
-</button>` : ''}
-      <span style="${isNeg ? `color:${negColor}` : ''}">${formatAmount(running)}</span>`;
-  });
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M9.5 2.672a.5.5 0 1 0 1 0V.843a.5.5 0 0 0-1 0zm4.5.035A.5.5 0 0 0 13.293 2L12 3.293a.5.5 0 1 0 .707.707zM7.293 4A.5.5 0 1 0 8 3.293L6.707 2A.5.5 0 0 0 6 2.707zm-.621 2.5a.5.5 0 1 0 0-1H4.843a.5.5 0 1 0 0 1zm8.485 0a.5.5 0 1 0 0-1h-1.829a.5.5 0 0 0 0 1zM13.293 10A.5.5 0 1 0 14 9.293L12.707 8a.5.5 0 1 0-.707.707zM9.5 11.157a.5.5 0 0 0 1 0V9.328a.5.5 0 0 0-1 0zm1.854-5.097a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L8.646 5.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0l1.293-1.293Zm-3 3a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L.646 13.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0z"/>
+        </svg>
+      </button>` : ''}
+    <span style="color:${textColor}">${formatAmount(running)}</span>`;
+});
 }
 
 // ── Итоговая строка ────────────────────────────────────────────────────────────
@@ -1202,6 +1206,7 @@ async function submitReconcile() {
   const weekEnd    = calcEl.dataset.weekEnd;
 
   if (isNaN(actualVal)) { showToast('Введите фактический баланс', 'error'); return; }
+  else if (actualVal < 0) { showToast('Введите корректный баланс (≥ 0)', 'error'); return; }
 
   try {
     const result = await pywebview.api.reconcile_balance({
@@ -1695,41 +1700,25 @@ function scrollToWeek(dateStr, highlight = false) {
 }
 
 function highlightWeekColumn(weekStart) {
-  // Убираем предыдущую подсветку если есть
   document.querySelectorAll('.week-highlight').forEach(el => {
     el.classList.remove('week-highlight');
     el.style.removeProperty('background-color');
     el.style.removeProperty('transition');
   });
 
-  // Находим все ячейки этой колонки
-  const th   = document.getElementById(`week-col-${weekStart}`);
-  const cells = document.querySelectorAll(
-    `td[data-week-start="${weekStart}"], th[data-week-start="${weekStart}"]`
-  );
+  const th = document.getElementById(`week-col-${weekStart}`);
+  if (!th) return;
 
-  const allEls = [th, ...cells].filter(Boolean);
+  const origBg = th.style.backgroundColor;
 
-  // Запоминаем оригинальные цвета
-  const originals = allEls.map(el => el.style.backgroundColor);
+  th.style.transition      = 'background-color 0.3s ease';
+  th.style.backgroundColor = '#fca5a5';
+  th.classList.add('week-highlight');
 
-  // Применяем красную подсветку
-  allEls.forEach(el => {
-    el.style.transition       = 'background-color 0.3s ease';
-    el.style.backgroundColor  = '#fca5a5';
-    el.classList.add('week-highlight');
-  });
-
-  // Через 3 секунды убираем
   setTimeout(() => {
-    allEls.forEach((el, i) => {
-      el.style.backgroundColor = originals[i] || '';
-      el.classList.remove('week-highlight');
-    });
-    // Убираем transition после анимации
-    setTimeout(() => {
-      allEls.forEach(el => el.style.removeProperty('transition'));
-    }, 300);
+    th.style.backgroundColor = origBg || '';
+    th.classList.remove('week-highlight');
+    setTimeout(() => th.style.removeProperty('transition'), 300);
   }, 3000);
 }
 
