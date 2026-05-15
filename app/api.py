@@ -615,6 +615,139 @@ class API:
             return {'success': False, 'error': str(e)}
         finally:
             db.close()
+    
+        # ── Отмена автозаполнения ─────────────────────────────────────────────────
+    def undo_autofill(self, data: dict) -> dict:
+        """
+        data = {
+            category_id:  int,
+            start_date:   'YYYY-MM-DD',
+            mode:         'weeks' | 'months',
+            count:        int,
+            day_of_month: int,
+        }
+        Удаляет все планы которые были созданы при автозаполнении
+        """
+        db = SessionLocal()
+        try:
+            category_id  = int(data['category_id'])
+            start_date   = data['start_date']
+            mode         = data.get('mode', 'weeks')
+            count        = int(data['count'])
+            day_of_month = int(data.get('day_of_month', 1))
+
+            # Генерируем тот же список дат что и при автозаполнении
+            target_dates = []
+
+            if mode == 'weeks':
+                week_start = self._get_monday(start_date)
+                for i in range(count):
+                    target_dates.append(week_start + timedelta(weeks=i))
+
+            elif mode == 'months':
+                start = date.fromisoformat(start_date)
+                year  = start.year
+                month = start.month
+
+                for i in range(count):
+                    if month == 12:
+                        last_day = 31
+                    else:
+                        last_day = (date(year, month + 1, 1) - timedelta(days=1)).day
+
+                    actual_day = min(day_of_month, last_day)
+                    target_dates.append(date(year, month, actual_day))
+
+                    month += 1
+                    if month > 12:
+                        month = 1
+                        year  += 1
+
+            # Находим уникальные недели и удаляем планы
+            week_starts = set()
+            for target_date in target_dates:
+                monday = self._get_monday(target_date.isoformat())
+                week_starts.add(monday.isoformat())
+
+            deleted_count = 0
+            for ws in week_starts:
+                plan = db.query(Plan).filter(
+                    and_(
+                        Plan.category_id     == category_id,
+                        Plan.week_start_date == ws,
+                    )
+                ).first()
+                if plan:
+                    db.delete(plan)
+                    deleted_count += 1
+
+            db.commit()
+            return {'success': True, 'deleted': deleted_count}
+
+        except Exception as e:
+            db.rollback()
+            return {'success': False, 'error': str(e)}
+        finally:
+            db.close()
+
+    # ── Отмена возврата займа ─────────────────────────────────────────────────
+    def undo_loan_repayment(self, data: dict) -> dict:
+        """
+        data = {
+            week_start: 'YYYY-MM-DD',
+            week_end:   'YYYY-MM-DD',
+        }
+        Удаляет все планы по займам и возврату займов за указанный период
+        """
+        db = SessionLocal()
+        try:
+            week_start = data['week_start']
+            week_end   = data['week_end']
+
+            # Находим категории займа и возврата
+            loan_cat = db.query(Category).filter(
+                Category.name == 'Займ'
+            ).first()
+
+            return_cat = db.query(Category).filter(
+                Category.name == 'Возврат займа'
+            ).first()
+
+            deleted_count = 0
+
+            # Удаляем план займа на неделе когда был дефицит
+            if loan_cat:
+                loan_plans = db.query(Plan).filter(
+                    and_(
+                        Plan.category_id     == loan_cat.id,
+                        Plan.week_start_date == week_start,
+                    )
+                ).all()
+                for lp in loan_plans:
+                    db.delete(lp)
+                    deleted_count += 1
+
+            # Удаляем ВСЕ планы возврата для этого займа
+            # (они могут быть растянуты на несколько недель)
+            if return_cat:
+                return_plans = db.query(Plan).filter(
+                    Plan.category_id == return_cat.id
+                ).all()
+                
+                # Фильтруем: оставляем только те которые идут после дефицита
+                for rp in return_plans:
+                    if rp.week_start_date >= week_start:
+                        db.delete(rp)
+                        deleted_count += 1
+
+            db.commit()
+            return {'success': True, 'deleted': deleted_count}
+
+        except Exception as e:
+            db.rollback()
+            return {'success': False, 'error': str(e)}
+        finally:
+            db.close()
 
     # ── Сверка баланса ────────────────────────────────────────────────────────
     def reconcile_balance(self, data: dict) -> dict:

@@ -750,3 +750,119 @@ input[type=number]::-webkit-outer-spin-button {
   background: #eff6ff;
   color: #2563eb;
 }
+
+/* ══════════════════════════════════════════════════════════════
+  EMOJI PICKER
+  ══════════════════════════════════════════════════════════════ */
+
+#emoji-picker-panel {
+  position: absolute;
+  z-index: 50;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 12px;
+  animation: slideDown 0.2s ease-out;
+  width: 400px;
+  max-height: 380px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.emoji-tab {
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  transition: opacity 0.2s ease;
+  white-space: nowrap;
+}
+
+.emoji-tab:hover {
+  opacity: 1 !important;
+}
+
+.emoji-tab.active {
+  opacity: 1 !important;
+  border-bottom: 2px solid #3b82f6;
+}
+
+#emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+#emoji-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+#emoji-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#emoji-grid::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+#emoji-grid::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.emoji-btn {
+  width: 40px;
+  height: 40px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-size: 18px;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-family: inherit;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.emoji-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.emoji-btn:active {
+  background: #e2e8f0;
+}
+
+#emoji-picker-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: 18px;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+#emoji-picker-btn:hover {
+  opacity: 1;
+}
