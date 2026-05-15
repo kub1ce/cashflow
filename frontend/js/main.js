@@ -439,6 +439,11 @@ function openCellEditor(td, initialMode) {
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter')  { e.preventDefault(); saveCellEditor(); }
     if (e.key === 'Escape') { e.preventDefault(); closeActiveCellEditor(true); }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      closeActiveCellEditor(true);
+      undoLastAction();
+    }
   });
 
   // Клик вне редактора — закрываем БЕЗ сохранения
@@ -648,6 +653,7 @@ function makeTotalRow(type, label, weeks, typeCats, plans, facts, color, cwColor
   weeks.forEach(week => {
     const td = document.createElement('td');
     td.className = 'data-cell data-cell-total';
+    td.dataset.weekStart = week.week_start;
 
     const isCurrent = isCurrentWeek(week.week_start, week.week_end);
     
@@ -726,6 +732,7 @@ function makeBalanceRow(weeks, categories, plans, facts, initialBalance,
 
     const td = document.createElement('td');
     td.className = 'balance-data-cell';
+    td.dataset.weekStart = week.week_start;
     td.style.backgroundColor = weekColor;
     td.style.borderColor = 'rgba(255,255,255,0.3)';
     td.style.textAlign = 'right';
@@ -1642,6 +1649,7 @@ async function updateCategoryColor(catId, colorValue, inputEl) {
   try {
     await pywebview.api.update_category(catId, { color_code: colorValue });
     await reloadData();
+    renderTable(App.data);
   } catch (e) {
     showToast('Ошибка обновления цвета', 'error');
   }
@@ -1848,48 +1856,31 @@ function scrollToWeek(dateStr, highlight = false) {
 }
 
 function highlightWeekColumn(weekStart) {
-  // Убираем предыдущую подсветку если есть
   document.querySelectorAll('.week-highlight').forEach(el => {
     el.classList.remove('week-highlight');
     el.style.removeProperty('background-color');
     el.style.removeProperty('transition');
   });
 
-  // Находим все ячейки этой колонки
-  const th   = document.getElementById(`week-col-${weekStart}`);
-  const cells = document.querySelectorAll(
-    `td[data-week-start="${weekStart}"], th[data-week-start="${weekStart}"]`
-  );
+  // Только заголовок недели
+  const th = document.getElementById(`week-col-${weekStart}`);
+  
+  if (!th) return;
 
-  const allEls = [th, ...cells].filter(Boolean);
+  const original = th.style.backgroundColor;
 
-  // Запоминаем оригинальные цвета
-  const originals = allEls.map(el => el.style.backgroundColor);
+  th.style.transition = 'background-color 0.3s ease';
+  th.style.backgroundColor = '#fca5a5';
+  th.classList.add('week-highlight');
 
-  // Применяем красную подсветку
-  allEls.forEach(el => {
-    el.style.transition       = 'background-color 0.3s ease';
-    el.style.backgroundColor  = '#fca5a5';
-    el.classList.add('week-highlight');
-  });
-
-  // Через 3 секунды убираем
   setTimeout(() => {
-    allEls.forEach((el, i) => {
-      el.style.backgroundColor = originals[i] || '';
-      el.classList.remove('week-highlight');
-    });
-    // Убираем transition после анимации
+    th.style.backgroundColor = original || '';
+    th.classList.remove('week-highlight');
     setTimeout(() => {
-      allEls.forEach(el => el.style.removeProperty('transition'));
+      th.style.removeProperty('transition');
     }, 300);
   }, 3000);
 }
-
-document.getElementById('date-picker')
-  ?.addEventListener('change', e => {
-    if (e.target.value) scrollToWeek(e.target.value, true);
-  });
 
 // ══════════════════════════════════════════════════════════════
 // ПОДТВЕРЖДЕНИЕ
@@ -2006,7 +1997,15 @@ async function init() {
   });
 
   const today = getTodayISO();
-  document.getElementById('date-picker').value = today;
+  const datePicker = document.getElementById('date-picker');
+  
+  if (datePicker) {
+    datePicker.value = today;
+    
+    datePicker.addEventListener('change', e => {
+      if (e.target.value) scrollToWeek(e.target.value, true);
+    });
+  }
 
   await reloadData();
 
@@ -2031,14 +2030,21 @@ async function init() {
 // ОТМЕНА ДЕЙСТВИЙ (UNDO)
 // ══════════════════════════════════════════════════════════════
 
+let _undoInProgress = false;
+
 async function undoLastAction() {
+  if (_undoInProgress) return;
+
   if (UndoHistory.isEmpty()) {
     showToast('Нечего отменять', 'info');
     return;
   }
 
+  _undoInProgress = true;
+  closeActiveCellEditor(true);
+
   const action = UndoHistory.pop();
-  
+
   try {
     if (action.type === ACTION_TYPES.CELL_EDIT) {
       await undoCellEdit(action);
@@ -2052,12 +2058,14 @@ async function undoLastAction() {
   } catch (e) {
     console.error('Ошибка отмены:', e);
     showToast('Ошибка при отмене действия', 'error');
+    UndoHistory.push(action);
+  } finally {
+    _undoInProgress = false;
   }
 }
 
 async function undoCellEdit(action) {
   const { categoryId, weekStart, weekEnd, mode, oldValue } = action;
-  
   await pywebview.api.save_cell({
     category_id:     categoryId,
     week_start_date: weekStart,
@@ -2069,7 +2077,6 @@ async function undoCellEdit(action) {
 
 async function undoAutofill(action) {
   const { categoryId, startDate, mode, count, dayOfMonth } = action;
-  
   await pywebview.api.undo_autofill({
     category_id:  categoryId,
     start_date:   startDate,
@@ -2081,24 +2088,26 @@ async function undoAutofill(action) {
 
 async function undoLoanRepayment(action) {
   const { weekStart, weekEnd } = action;
-  
   await pywebview.api.undo_loan_repayment({
     week_start: weekStart,
     week_end:   weekEnd,
   });
 }
 
-// Горячая клавиша Ctrl+Z (Cmd+Z на Mac)
+// Горячая клавиша Ctrl+Z — capture:true чтобы перехватить ДО input
 document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
     e.preventDefault();
+    e.stopPropagation();
     undoLastAction();
   }
+}, true);
+
+// Закрываем редактор при потере фокуса окном (alt+tab и т.д.)
+window.addEventListener('blur', () => {
+  closeActiveCellEditor(true);
 });
 
-// ══════════════════════════════════════════════════════════════
-// EMOJI PICKER
-// ══════════════════════════════════════════════════════════════
 
 // ══════════════════════════════════════════════════════════════
 // EMOJI PICKER
