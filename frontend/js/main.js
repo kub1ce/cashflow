@@ -305,7 +305,7 @@ function makeDataCell(cat, week, plans, facts, cwColor) {
 
   const isCurrent = isCurrentWeek(week.week_start, week.week_end);
   if (isCurrent) {
-    td.style.backgroundColor = `${cwColor}40`;
+    td.style.backgroundColor = cwColor;
   }
 
   refreshCellContent(td, plans, facts);
@@ -488,8 +488,14 @@ async function saveCellEditor() {
 
   if (!categoryId || !weekStart) return;
 
-  // Оптимистичное обновление локального кэша
   const key = `${categoryId}:${weekStart}`;
+  
+  // Сохраняем старое значение
+  const oldValue = mode === 'plan' 
+    ? App.data.plans[key]?.amount || 0
+    : (App.data.facts[key] ? App.data.facts[key].reduce((s,f)=>s+f.amount,0) : 0);
+
+  // Оптимистичное обновление локального кэша
   if (mode === 'plan') {
     if (amount === 0) {
       delete App.data.plans[key];
@@ -508,6 +514,18 @@ async function saveCellEditor() {
 
   // Пересчитываем итоги и баланс
   recalcTotalsAndBalance();
+
+  // Добавляем в историю
+  UndoHistory.push({
+    type: ACTION_TYPES.CELL_EDIT,
+    categoryId,
+    weekStart,
+    weekEnd,
+    mode,
+    oldValue,
+    newValue: amount,
+    timestamp: Date.now(),
+  });
 
   App.editing = { categoryId: null, weekStart: null, weekEnd: null, mode: 'plan', el: null };
 
@@ -532,6 +550,7 @@ function recalcTotalsAndBalance() {
   if (!App.data) return;
   const { weeks, categories, plans, facts, initial_balance } = App.data;
   const vc  = App.data.settings.visual_config || {};
+  const cwColor = vc.currentWeekColor || '#fef08a';
 
   const incomeCats  = categories.filter(c => c.type === 'income');
   const expenseCats = categories.filter(c => c.type === 'expense');
@@ -583,16 +602,20 @@ function recalcTotalsAndBalance() {
 
   const balanceCells = document.querySelectorAll('.row-balance td.balance-data-cell');
   balanceCells.forEach((td, i) => {
+    const week = weeks[i];
   const wt = weekTotals[i];
   if (!wt) return;
   running += wt.inc - wt.exp;
 
-  const inner = td.querySelector('.balance-cell-inner');
-  const isNeg = running < 0;
-  const cellBg = td.style.backgroundColor || getWeekColor();
-  const textColor = isNeg
+    const inner = td.querySelector('.balance-cell-inner');
+    const isNeg = running < 0;
+    const cellBg = td.style.backgroundColor || getWeekColor();
+    const textColor = isNeg
     ? (getVisualConfig().negativeBalanceColor || '#f87171')
     : getContrastColor(cellBg);
+    const isCurrent = isCurrentWeek(week.week_start, week.week_end);
+    // Обновляем цвет фона
+    td.style.backgroundColor = isCurrent ? cwColor : weekColor;
 
   inner.innerHTML = `
     ${isNeg ? `
@@ -601,12 +624,12 @@ function recalcTotalsAndBalance() {
                  '${wt.weekStart}',
                  ${Math.abs(running).toFixed(2)})"
         title="Покрыть дефицит">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M9.5 2.672a.5.5 0 1 0 1 0V.843a.5.5 0 0 0-1 0zm4.5.035A.5.5 0 0 0 13.293 2L12 3.293a.5.5 0 1 0 .707.707zM7.293 4A.5.5 0 1 0 8 3.293L6.707 2A.5.5 0 0 0 6 2.707zm-.621 2.5a.5.5 0 1 0 0-1H4.843a.5.5 0 1 0 0 1zm8.485 0a.5.5 0 1 0 0-1h-1.829a.5.5 0 0 0 0 1zM13.293 10A.5.5 0 1 0 14 9.293L12.707 8a.5.5 0 1 0-.707.707zM9.5 11.157a.5.5 0 0 0 1 0V9.328a.5.5 0 0 0-1 0zm1.854-5.097a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L8.646 5.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0l1.293-1.293Zm-3 3a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L.646 13.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0z"/>
-        </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-magic" viewBox="0 0 16 16">
+            <path d="M9.5 2.672a.5.5 0 1 0 1 0V.843a.5.5 0 0 0-1 0zm4.5.035A.5.5 0 0 0 13.293 2L12 3.293a.5.5 0 1 0 .707.707zM7.293 4A.5.5 0 1 0 8 3.293L6.707 2A.5.5 0 0 0 6 2.707zm-.621 2.5a.5.5 0 1 0 0-1H4.843a.5.5 0 1 0 0 1zm8.485 0a.5.5 0 1 0 0-1h-1.829a.5.5 0 0 0 0 1zM13.293 10A.5.5 0 1 0 14 9.293L12.707 8a.5.5 0 1 0-.707.707zM9.5 11.157a.5.5 0 0 0 1 0V9.328a.5.5 0 0 0-1 0zm1.854-5.097a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L8.646 5.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0l1.293-1.293Zm-3 3a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L.646 13.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0z"/>
+          </svg>
       </button>` : ''}
-    <span style="color:${textColor}">${formatAmount(running)}</span>`;
-});
+      <span style="color:${textColor}">${formatAmount(running)}</span>`;
+  });
 }
 
 // ── Итоговая строка ────────────────────────────────────────────────────────────
@@ -628,9 +651,13 @@ function makeTotalRow(type, label, weeks, typeCats, plans, facts, color, cwColor
     td.className = 'data-cell data-cell-total';
 
     const isCurrent = isCurrentWeek(week.week_start, week.week_end);
-    if (isCurrent) td.style.backgroundColor = `${cwColor}30`;
-    if (type === 'income') td.style.background = 'rgba(236,253,245,0.3)';
-    if (type === 'expense') td.style.background = 'rgba(255,241,242,0.3)';
+    
+    if (isCurrent) {
+      td.style.backgroundColor = cwColor;
+    } else {
+      if (type === 'income') td.style.background = 'rgba(236,253,245,0.3)';
+      if (type === 'expense') td.style.background = 'rgba(255,241,242,0.3)';
+    }
 
     let total = 0;
     typeCats.forEach(cat => {
@@ -930,6 +957,19 @@ async function submitAutofill() {
     });
 
     if (result.success) {
+      // Добавляем в историю
+      UndoHistory.push({
+        type: ACTION_TYPES.AUTOFILL,
+        categoryId: Autofill.categoryId,
+        startDate,
+        amount,
+        mode: Autofill.mode,
+        count,
+        dayOfMonth,
+        filledWeeks: result.filled || count,
+        timestamp: Date.now(),
+      });
+
       closeAutofillModal();
       showToast(`Заполнено ${result.filled} ${pluralWeeks(result.filled)}`, 'success');
       await reloadData();
@@ -941,10 +981,39 @@ async function submitAutofill() {
   }
 }
 
-document.getElementById('autofill-modal')
-  ?.addEventListener('click', function(e) {
-    if (e.target === this) closeAutofillModal();
-  });
+// ══════════════════════════════════════════════════════════════
+// ИСТОРИЯ ДЕЙСТВИЙ (UNDO)
+// ══════════════════════════════════════════════════════════════
+
+const UndoHistory = {
+  stack: [],
+  maxSize: 50,
+
+  push(action) {
+    this.stack.push(action);
+    if (this.stack.length > this.maxSize) {
+      this.stack.shift();
+    }
+  },
+
+  pop() {
+    return this.stack.pop();
+  },
+
+  clear() {
+    this.stack = [];
+  },
+
+  isEmpty() {
+    return this.stack.length === 0;
+  },
+};
+
+const ACTION_TYPES = {
+  CELL_EDIT:      'cell_edit',
+  AUTOFILL:       'autofill',
+  LOAN_REPAYMENT: 'loan_repayment',
+};
 
 // ══════════════════════════════════════════════════════════════
 // КАССОВЫЙ РАЗРЫВ
@@ -1048,7 +1117,7 @@ function closeDeficitModal() {
 
 async function submitDeficit() {
   if (Deficit.mode === 'single') {
-    // Единовременный возврат (текущая логика)
+    // Единовременный возврат
     const returnDate = document.getElementById('deficit-return-date').value;
     if (!returnDate) { showToast('Укажите дату возврата', 'error'); return; }
 
@@ -1061,6 +1130,17 @@ async function submitDeficit() {
         return_date: returnDate,
       });
       if (result.success) {
+        // Добавляем в историю
+        UndoHistory.push({
+          type: ACTION_TYPES.LOAN_REPAYMENT,
+          weekStart: Deficit.weekStart,
+          weekEnd: Deficit.weekEnd,
+          amount: Deficit.amount,
+          returnDate,
+          mode: 'single',
+          timestamp: Date.now(),
+        });
+
         closeDeficitModal();
         showToast('Займ оформлен, возврат запланирован', 'success');
         await reloadData();
@@ -1096,6 +1176,19 @@ async function submitDeficit() {
         parts_start_date: startDate,
       });
       if (result.success) {
+        // Добавляем в историю
+        UndoHistory.push({
+          type: ACTION_TYPES.LOAN_REPAYMENT,
+          weekStart: Deficit.weekStart,
+          weekEnd: Deficit.weekEnd,
+          amount: Deficit.amount,
+          mode: 'parts',
+          partsCount: count,
+          partsPeriod: period,
+          partsStartDate: startDate,
+          timestamp: Date.now(),
+        });
+
         closeDeficitModal();
         showToast(`Займ оформлен, ${count} выплат запланировано`, 'success');
         await reloadData();
@@ -1107,11 +1200,6 @@ async function submitDeficit() {
     }
   }
 }
-
-document.getElementById('deficit-modal')
-  ?.addEventListener('click', function(e) {
-    if (e.target === this) closeDeficitModal();
-  });
 
 // ══════════════════════════════════════════════════════════════
 // СВЕРКА БАЛАНСА
@@ -1258,6 +1346,29 @@ async function renderSettingsView() {
 
   const vc = settings.visual_config || {};
 
+  let warningHtml = '';
+  if (App.data && App.data.weeks && App.data.weeks.length > 0) {
+    const today = getTodayISO();
+    const firstWeek = App.data.weeks[0];
+    const lastWeek = App.data.weeks[App.data.weeks.length - 1];
+    
+    if (today < firstWeek.week_start) {
+      warningHtml = `
+        <div style="padding:12px; background:#fef3c7; border:1px solid #fcd34d; 
+                    border-radius:8px; font-size:13px; color:#92400e; margin-bottom:20px;">
+          ⚠️ <strong>Внимание:</strong> Период планирования начинается ${firstWeek.week_start}, 
+          а текущая дата ${today}. Текущая неделя не будет выделена.
+        </div>`;
+    } else if (today > lastWeek.week_end) {
+      warningHtml = `
+        <div style="padding:12px; background:#fef3c7; border:1px solid #fcd34d; 
+                    border-radius:8px; font-size:13px; color:#92400e; margin-bottom:20px;">
+          ⚠️ <strong>Внимание:</strong> Период планирования заканчивается ${lastWeek.week_end}, 
+          а текущая дата ${today}. Текущая неделя не будет выделена.
+        </div>`;
+    }
+  }
+
   container.innerHTML = `
 
     <!-- Параметры планирования -->
@@ -1325,23 +1436,44 @@ async function renderSettingsView() {
         </div>
       </div>
 
-      <!-- Форма добавления -->
+    <!-- Форма добавления категории с emoji picker -->
       <div class="pt-4 border-t border-slate-100 flex items-end gap-3 max-w-2xl">
         <div class="flex-1">
           <label class="block text-[10px] font-bold text-slate-500 mb-1 uppercase">
             Добавить статью
           </label>
           <div class="flex gap-2">
-            <input type="text" id="s-new-cat-name"
-                   placeholder="Название (можно с эмодзи 🎯)"
-                   class="settings-input flex-[2]"
-                   onkeydown="if(event.key==='Enter') submitAddCategorySettings()"/>
+            <!-- Input с эмодзи кнопкой -->
+            <div class="relative flex-[2]">
+              <input type="text" id="s-new-cat-name"
+                    placeholder="Название"
+                    class="settings-input w-full pr-10"
+                    onkeydown="if(event.key==='Enter') submitAddCategorySettings()"/>
+              <button type="button"
+                      id="emoji-picker-btn"
+                      class="absolute right-2 top-1/2 transform -translate-y-1/2"
+                      title="Добавить эмодзи"
+                      onclick="toggleEmojiPicker(event)">
+                😊
+              </button>
+            </div>
+            
             <select id="s-new-cat-type" class="settings-select flex-1">
               <option value="expense">Расход</option>
               <option value="income">Доход</option>
             </select>
           </div>
+          
+          <!-- Emoji Picker Panel -->
+          <div id="emoji-picker-panel" 
+              class="hidden"
+              style="width: 380px; max-height: 500px; overflow-y: auto;">
+            <div class="grid grid-cols-8 gap-1.5" id="emoji-grid">
+              <!-- Эмодзи будут загружены JS -->
+            </div>
+          </div>
         </div>
+        
         <button onclick="submitAddCategorySettings()"
                 class="btn-settings-primary">
           Добавить
@@ -1464,6 +1596,10 @@ function renderSettingsCategoryList(cats, container) {
         ` : ''}
       </div>`;
 
+    setTimeout(() => {
+      initEmojiPicker();
+    }, 100);
+
     container.appendChild(item);
   });
 }
@@ -1490,6 +1626,7 @@ async function saveCategoryName(catId) {
     if (result.success) {
       showToast('Категория обновлена', 'success');
       await reloadData();
+      renderTable(App.data);
       renderSettingsView();
     } else {
       showToast('Ошибка: ' + result.error, 'error');
@@ -1523,8 +1660,14 @@ async function deleteCategorySettings(catId, catName) {
     const result = await pywebview.api.delete_category(catId);
     if (result.success) {
       showToast('Категория удалена', 'success');
+      
+      // Перезагружаем и ВСЕГДА перерисовываем
       await reloadData();
-      renderSettingsView();
+      renderTable(App.data);
+      
+      if (App.activeView === 'settings') {
+        renderSettingsView();
+      }
     } else {
       showToast('Ошибка: ' + result.error, 'error');
     }
@@ -1548,8 +1691,15 @@ async function submitAddCategorySettings() {
     if (result.success) {
       document.getElementById('s-new-cat-name').value = '';
       showToast(`Категория «${name}» добавлена`, 'success');
+      
+      // Перезагружаем данные И ВСЕГДА ПЕРЕРИСОВЫВАЕМ ТАБЛИЦУ
       await reloadData();
-      renderSettingsView();
+      renderTable(App.data);  // Всегда перерисовываем
+      
+      // Если открыта settings, то обновим и её
+      if (App.activeView === 'settings') {
+        renderSettingsView();
+      }
     } else {
       showToast('Ошибка: ' + result.error, 'error');
     }
@@ -1825,7 +1975,11 @@ async function reloadData() {
     const data = await pywebview.api.get_cashflow_data();
     if (data.error) { console.error('Ошибка данных:', data.error); return; }
     App.data = data;
-    if (App.activeView === 'dashboard') renderTable(data);
+    
+    // Явно перерисовываем в зависимости от текущего view
+    if (App.activeView === 'dashboard') {
+      renderTable(data);
+    }
   } catch (e) {
     console.error('Ошибка загрузки:', e);
   }
@@ -1842,9 +1996,368 @@ async function init() {
 
   await reloadData();
 
+  //Проверка текущей даты
+  if (App.data && App.data.weeks && App.data.weeks.length > 0) {
+    const firstWeek = App.data.weeks[0];
+    const lastWeek = App.data.weeks[App.data.weeks.length - 1];
+    
+    if (today < firstWeek.week_start) {
+      showToast('⚠️ Текущая дата раньше начала периода планирования', 'info');
+    } else if (today > lastWeek.week_end) {
+      showToast('⚠️ Текущая дата позже конца периода планирования', 'info');
+    }
+  }
+
   setTimeout(() => scrollToWeek(today), 150);
 
   document.getElementById('loader').classList.add('hidden');
+}
+
+// ══════════════════════════════════════════════════════════════
+// ОТМЕНА ДЕЙСТВИЙ (UNDO)
+// ══════════════════════════════════════════════════════════════
+
+async function undoLastAction() {
+  if (UndoHistory.isEmpty()) {
+    showToast('Нечего отменять', 'info');
+    return;
+  }
+
+  const action = UndoHistory.pop();
+  
+  try {
+    if (action.type === ACTION_TYPES.CELL_EDIT) {
+      await undoCellEdit(action);
+    } else if (action.type === ACTION_TYPES.AUTOFILL) {
+      await undoAutofill(action);
+    } else if (action.type === ACTION_TYPES.LOAN_REPAYMENT) {
+      await undoLoanRepayment(action);
+    }
+    showToast('Действие отменено', 'success');
+    await reloadData();
+  } catch (e) {
+    console.error('Ошибка отмены:', e);
+    showToast('Ошибка при отмене действия', 'error');
+  }
+}
+
+async function undoCellEdit(action) {
+  const { categoryId, weekStart, weekEnd, mode, oldValue } = action;
+  
+  await pywebview.api.save_cell({
+    category_id:     categoryId,
+    week_start_date: weekStart,
+    week_end_date:   weekEnd,
+    amount:          oldValue,
+    mode,
+  });
+}
+
+async function undoAutofill(action) {
+  const { categoryId, startDate, mode, count, dayOfMonth } = action;
+  
+  await pywebview.api.undo_autofill({
+    category_id:  categoryId,
+    start_date:   startDate,
+    mode,
+    count,
+    day_of_month: dayOfMonth,
+  });
+}
+
+async function undoLoanRepayment(action) {
+  const { weekStart, weekEnd } = action;
+  
+  await pywebview.api.undo_loan_repayment({
+    week_start: weekStart,
+    week_end:   weekEnd,
+  });
+}
+
+// Горячая клавиша Ctrl+Z (Cmd+Z на Mac)
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault();
+    undoLastAction();
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+// EMOJI PICKER
+// ══════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════
+// EMOJI PICKER
+// ══════════════════════════════════════════════════════════════
+
+const EMOJI_CATEGORIES = {
+  '😊 Смайлики': [
+    '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', 
+    '😉', '😌', '😍', '🥰', '😘', '😗', '😚', '😙', '😋', '😛', '😜', '🤪',
+    '😌', '😔', '😑', '🤐', '🤨', '😐', '😏', '😒', '🙁', '☹️', '🥺', '😲',
+    '😞', '😖', '😢', '😭', '😤', '😠', '😡', '🤬', '😈', '👿', '💀', '☠️',
+    '💩', '🤡', '👹', '👺', '👻', '👽', '👾', '🤖', '😺', '😸', '😹', '😻',
+    '😼', '😽', '🙀', '😿', '😾',
+  ],
+
+  '👋 Жесты': [
+    '👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤌', '🤏', '✌️', '🤞', '🫰', '🤟',
+    '🤘', '🤙', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲',
+    '🤝', '💅', '🤳', '💪', '🦾', '🦿', '🦵', '🦶', '👂', '👃', '🧠', '🦷',
+    '🦴', '👀', '👁️', '👅', '👄',
+  ],
+
+  '🐶 Животные': [
+    '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮',
+    '🐷', '🐸', '🐵', '🙈', '🙉', '🙊', '🐒', '🐔', '🐧', '🐦', '🐤', '🦆',
+    '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞',
+    '🐜', '🪰', '🪲', '🦟', '🦗', '🕷️', '🦂', '🐢', '🐍', '🦎', '🦖', '🦕',
+    '🐙', '🦑', '🦐', '🦞', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈',
+    '🐊', '🐅', '🐆', '🦓', '🦍', '🦧', '🐘', '🦛', '🦏', '🐪', '🐫', '🦒',
+    '🦘', '🐃', '🐂', '🐄', '🐎', '🐖', '🐏', '🐑', '🦉', '🐐', '🦌', '🐕',
+    '🐩', '🦮', '🐈', '🐓', '🦃', '🦚', '🦜', '🦢', '🦗', '🕷️',
+  ],
+
+  '🍔 Еда и напитки': [
+    '🍏', '🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍈', '🍒', '🍑',
+    '🥭', '🍍', '🥥', '🥝', '🍅', '🍆', '🥑', '🥦', '🥬', '🥒', '🌶️', '🌽',
+    '🥕', '🥔', '🍠', '🥐', '🥯', '🍞', '🥖', '🥨', '🧀', '🥚', '🍳', '🧈',
+    '🥞', '🥓', '🥔', '🌭', '🍔', '🍟', '🍕', '🥪', '🥙', '🧆', '🌮', '🌯',
+    '🥗', '🥘', '🥫', '🍝', '🍜', '🍲', '🍛', '🍣', '🍱', '🥟', '🦪', '🍤',
+    '🍙', '🍚', '🍘', '🍥', '🥠', '🥮', '🍢', '🍡', '🍧', '🍨', '🍦', '🍰',
+    '🎂', '🧁', '🍮', '🍭', '🍬', '🍫', '🍿', '🍩', '🍪', '🌰', '🍯', '☕',
+    '🍵', '🍶', '🍾', '🍷', '🍸', '🍹', '🍺', '🍻', '🥂', '🥃', '🥤', '🧃',
+    '🧉', '🧊',
+  ],
+
+  '⚽ Спорт': [
+    '⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎳', '🏓', '🏸',
+    '🏒', '🏑', '🥍', '🏏', '🪃', '🥅', '⛳', '⛸️', '🎣', '🎽', '🎿', '⛷️',
+    '🏂', '🪂', '🛷', '🥌', '🎯', '🪀', '🪁', '🎮', '🎲', '🏈', '🏀', '⚽',
+  ],
+
+  '🚗 Транспорт': [
+    '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐', '🛻', '🚚',
+    '🚛', '🚜', '🏍️', '🛵', '🦯', '🦽', '🦼', '🛺', '🚲', '🛴', '🛹', '🛼',
+    '🚨', '🚔', '🚍', '🚘', '🚖', '🚡', '🚠', '🚟', '🚃', '🚋', '🚞', '🚝',
+    '🚄', '🚅', '🚈', '🚆', '🚇', '🚉', '✈️', '🛫', '🛬', '🛰️', '🚁', '🛶',
+    '⛵', '🚤', '🛳️', '⛴️', '🛥️', '🚢', '⚓',
+  ],
+
+  '🌍 Путешествия': [
+    '🌍', '🌎', '🌏', '🌐', '🗺️', '🗿', '🗽', '⛪', '🕌', '🕍', '🛕', '🕋',
+    '⛩️', '🛤️', '🛣️', '🗾', '⛲', '⛺', '🏠', '🏡', '🏢', '🏣', '🏤', '🏥',
+    '🏦', '🏨', '🏪', '🏫', '🏬', '🏭', '🏯', '🏰', '💒', '🗼', '🗻', '🌁',
+    '🌃', '🌄', '🌅', '🌆', '🌇', '🌉', '🌁', '⛰️', '🏔️', '🗻', '🌋', '⛰️',
+    '🏕️', '⛺',
+  ],
+
+  '💰 Деньги': [
+    '💰', '💴', '💵', '💶', '💷', '💸', '💳', '🧾', '💎', '⌚', '👜', '👝',
+    '🎁', '🏠', '🚗', '✈️',
+  ],
+
+  '❤️ Символы': [
+    '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '❤️‍🔥', '❤️‍🩹',
+    '💔', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '💌', '💛', '💜',
+    '💚', '💙', '🤍', '🤎', '🖤', '💔', '✨', '⭐', '🌟', '💫', '⚡', '☄️',
+    '💥', '🔥', '🌪️', '🌈', '☀️', '🌤️', '⛅', '🌥️', '☁️', '🌦️', '🌧️', '⛈️',
+    '🌩️', '🌨️', '❄️', '☃️', '⛄', '🌬️', '💨', '💧', '💦', '☔', '🌊', '🏄',
+    '🏊', '🤽', '🚣', '🧗', '🚴', '🚵', '🤸', '⛹️', '🏋️', '🤼', '🤸', '⛹️',
+  ],
+
+  '🌸 Природа': [
+    '🌷', '🌹', '🥀', '🌺', '🌻', '🌼', '🌸', '🌞', '🌝', '🌛', '🌜', '⭐',
+    '🌟', '✨', '⚡', '☄️', '💥', '🔥', '🌪️', '🌈', '☀️', '🌤️', '⛅', '🌥️',
+    '☁️', '🌦️', '🌧️', '⛈️', '🌩️', '⛈️', '🌨️', '❄️', '☃️', '⛄', '🌬️', '💨',
+    '💧', '💦', '☔', '🍀', '🌿', '☘️', '🎍', '🎋', '🍃', '🍂', '🍁', '🍄',
+    '🌾', '💐', '🌷', '🌹', '🥀', '🌺', '🌻', '🌼', '🌸',
+  ],
+
+  '⏰ Время': [
+    '⏰', '🕰️', '⏱️', '⏲️', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗',
+    '🕘', '🕙', '🕚', '🕛', '🕧', '🕜', '🕝', '🕞', '🕟', '🕠', '🕡', '🕢',
+    '🕣', '🕤', '🕥',
+  ],
+
+  '🎨 Развлечения': [
+    '🎪', '🎨', '🎬', '🎤', '🎧', '🎼', '🎹', '🥁', '🎷', '🎺', '🎸', '🎻',
+    '🎲', '🎯', '🎳', '🎮', '🎰', '🧩', '🚗', '🎭', '🎪', '🎨', '🎬',
+  ],
+};
+
+function initEmojiPicker() {
+  const grid = document.getElementById('emoji-grid');
+  if (!grid) return;
+  
+  grid.innerHTML = '';
+  
+  // Создаём контейнер с вкладками
+  const container = grid.parentElement;
+  container.innerHTML = '';
+  
+  const tabs = document.createElement('div');
+  tabs.style.cssText = `
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  `;
+  
+  const gridContainer = document.createElement('div');
+  gridContainer.id = 'emoji-grid';
+  gridContainer.style.cssText = `
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 6px;
+  `;
+  
+  let firstTab = true;
+  
+  Object.entries(EMOJI_CATEGORIES).forEach(([category, emojis]) => {
+    // Кнопка вкладки
+    const tabBtn = document.createElement('button');
+    tabBtn.type = 'button';
+    tabBtn.style.cssText = `
+      padding: 6px 12px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 16px;
+      opacity: ${firstTab ? '1' : '0.5'};
+      border-bottom: ${firstTab ? '2px solid #3b82f6' : 'none'};
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    `;
+    tabBtn.textContent = category.split(' ')[0];
+    tabBtn.className = firstTab ? 'emoji-tab active' : 'emoji-tab';
+    
+    tabBtn.addEventListener('mouseover', () => {
+      tabBtn.style.opacity = '1';
+    });
+    
+    tabBtn.addEventListener('mouseout', () => {
+      if (!tabBtn.classList.contains('active')) {
+        tabBtn.style.opacity = '0.5';
+      }
+    });
+    
+    tabBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      
+      // Обновляем активную вкладку
+      document.querySelectorAll('.emoji-tab').forEach(t => {
+        t.classList.remove('active');
+        t.style.opacity = '0.5';
+        t.style.borderBottom = 'none';
+      });
+      tabBtn.classList.add('active');
+      tabBtn.style.opacity = '1';
+      tabBtn.style.borderBottom = '2px solid #3b82f6';
+      
+      // Рендерим эмодзи для этой категории
+      gridContainer.innerHTML = '';
+      emojis.forEach(emoji => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'emoji-btn';
+        btn.textContent = emoji;
+        btn.title = emoji;
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          insertEmoji(emoji);
+        });
+        gridContainer.appendChild(btn);
+      });
+    });
+    
+    tabs.appendChild(tabBtn);
+    firstTab = false;
+  });
+  
+  container.appendChild(tabs);
+  container.appendChild(gridContainer);
+  
+  // Рендерим первую категорию по умолчанию
+  const firstCategory = Object.values(EMOJI_CATEGORIES)[0];
+  firstCategory.forEach(emoji => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'emoji-btn';
+    btn.textContent = emoji;
+    btn.title = emoji;
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      insertEmoji(emoji);
+    });
+    gridContainer.appendChild(btn);
+  });
+}
+
+function toggleEmojiPicker(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  const panel = document.getElementById('emoji-picker-panel');
+  const isHidden = panel.classList.contains('hidden');
+  
+  if (isHidden) {
+    initEmojiPicker();
+    panel.classList.remove('hidden');
+    
+    const input = document.getElementById('s-new-cat-name');
+    const rect = input.getBoundingClientRect();
+    
+    // Позиционирование с учётом границ окна
+    let top = rect.bottom + 5;
+    let left = rect.left;
+    
+    // Если панель выходит за границы экрана
+    const windowHeight = window.innerHeight;
+    const panelHeight = 380;
+    
+    if (top + panelHeight > windowHeight - 20) {
+      top = rect.top - panelHeight - 5;
+    }
+    
+    panel.style.top = top + 'px';
+    panel.style.left = left + 'px';
+    
+    setTimeout(() => {
+      document.addEventListener('click', closeEmojiPicker);
+    }, 0);
+  } else {
+    panel.classList.add('hidden');
+    document.removeEventListener('click', closeEmojiPicker);
+  }
+}
+
+function closeEmojiPicker(e) {
+  const panel = document.getElementById('emoji-picker-panel');
+  const btn = document.getElementById('emoji-picker-btn');
+  const input = document.getElementById('s-new-cat-name');
+  
+  if (!panel.contains(e.target) && !btn.contains(e.target) && !input.contains(e.target)) {
+    panel.classList.add('hidden');
+    document.removeEventListener('click', closeEmojiPicker);
+  }
+}
+
+function insertEmoji(emoji) {
+  const input = document.getElementById('s-new-cat-name');
+  const cursorPos = input.selectionStart;
+  const text = input.value;
+  
+  const newText = text.slice(0, cursorPos) + emoji + text.slice(cursorPos);
+  input.value = newText;
+  
+  input.focus();
+  input.setSelectionRange(cursorPos + emoji.length, cursorPos + emoji.length);
+  
+  document.getElementById('emoji-picker-panel').classList.add('hidden');
+  document.removeEventListener('click', closeEmojiPicker);
 }
 
 init();

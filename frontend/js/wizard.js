@@ -70,8 +70,14 @@ function hideError() {
 function getMondayISO(dateStr) {
   const d   = new Date(dateStr + 'T00:00:00');
   const day = d.getDay();
+
   d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
-  return d.toISOString().split('T')[0];
+
+  const year  = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const date  = String(d.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${date}`;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -302,17 +308,20 @@ async function finish() {
 // ══════════════════════════════════════════════════════════════
 
 // Предустанавливаем дату начала = первый понедельник текущего года
-(function setDefaultDate() {
+document.addEventListener('DOMContentLoaded', function() {
+  // Устанавливаем понедельник текущей недели
   const today = new Date();
+  const day   = today.getDay();
+  const diff  = day === 0 ? -6 : 1 - day; // сдвиг до понедельника
+  today.setDate(today.getDate() + diff);
+  
   const year  = today.getFullYear();
-  const jan1  = new Date(year, 0, 1);
-  // Первый понедельник года
-  const day   = jan1.getDay();
-  const diff  = day === 0 ? 1 : day === 1 ? 0 : 8 - day;
-  jan1.setDate(jan1.getDate() + diff);
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const dayNum = String(today.getDate()).padStart(2, '0');
+
   document.getElementById('period-start').value =
-    jan1.toISOString().split('T')[0];
-})();
+    `${year}-${month}-${dayNum}`;
 
 // Показываем первый шаг
 updateUI(1);
+});
