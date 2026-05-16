@@ -916,7 +916,6 @@ class API:
                     'version':    1,
                     'exported_at': date.today().isoformat(),
                     'settings': {
-                        'planning_start_date': s.planning_start_date if s else None,
                         'financial_strategy':  s.financial_strategy  if s else 'manual',
                         'visual_config':       json.loads(s.visual_config or '{}') if s else {},
                     },
@@ -964,9 +963,13 @@ class API:
             db.close()
 
     def import_data(self, data: dict) -> dict:
-        """Полностью заменяет данные БД из импортированного словаря"""
+        """Полностью заменяет данные БД из импортированного словаря (кроме planning_start_date)"""
         db = SessionLocal()
         try:
+            # Сохраняем текущую дату начала периода
+            current_settings = db.query(Settings).first()
+            current_start_date = current_settings.planning_start_date if current_settings else None
+            
             # Очищаем таблицы
             db.query(Fact).delete()
             db.query(Plan).delete()
@@ -976,7 +979,8 @@ class API:
 
             s = data.get('settings', {})
             db.add(Settings(
-                planning_start_date = s.get('planning_start_date'),
+                # СОХРАНЯЕМ СТАРУЮ ДАТУ (или берём из импорта если её нет)
+                planning_start_date = current_start_date or s.get('planning_start_date'),
                 financial_strategy  = s.get('financial_strategy', 'manual'),
                 visual_config       = json.dumps(s.get('visual_config', {})),
             ))
@@ -1029,6 +1033,7 @@ class API:
 
             db.commit()
             return {'success': True}
+            
         except Exception as e:
             db.rollback()
             return {'success': False, 'error': str(e)}

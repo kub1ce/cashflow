@@ -426,7 +426,7 @@ function openCellEditor(td, initialMode) {
       value="${initVal}"
       autocomplete="off"
       placeholder="0"
-      oninput="this.value = this.value.replace(/[^0-9.,]/g, '')"
+      oninput="this.value = this.value.replace(/[^0-9.,+-]/g, '')"
     />
     <div class="cell-editor-actions">
       <button type="button" class="cell-editor-cancel">✕</button>
@@ -1869,6 +1869,10 @@ async function handleImport() {
       
       // Очищаем историю undo — старые действия больше не актуальны
       UndoHistory.clear();
+      
+      // Прокручиваем к текущей неделе (если она есть в периоде)
+      const today = getTodayISO();
+      setTimeout(() => scrollToWeek(today), 150);
     } else {
       showToast('Ошибка импорта: ' + importResult.error, 'error');
     }
