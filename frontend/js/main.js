@@ -1594,15 +1594,42 @@ function renderSettingsCategoryList(cats, container) {
 
       <!-- Редактор (скрыт) -->
       <div class="settings-cat-name-wrap hidden" id="cat-edit-${cat.id}">
-        <input type="text"
-               class="settings-cat-edit-input"
-               id="cat-edit-input-${cat.id}"
-               value="${cat.name}"
-               onkeydown="if(event.key==='Enter') saveCategoryName(${cat.id});
-                          if(event.key==='Escape') cancelCategoryEdit(${cat.id});"/>
+        <!-- Input с кнопкой эмодзи -->
+        <div class="relative flex items-center flex-1">
+          <input type="text"
+                 class="settings-cat-edit-input w-full pr-8"
+                 id="cat-edit-input-${cat.id}"
+                 value="${cat.name}"
+                 onkeydown="if(event.key==='Enter') saveCategoryName(${cat.id});
+                            if(event.key==='Escape') cancelCategoryEdit(${cat.id});"/>
+          <button type="button"
+                  class="absolute right-2 top-1/2 -translate-y-1/2 text-base leading-none"
+                  title="Добавить эмодзи"
+                  onclick="toggleEmojiPickerForEdit(event, ${cat.id})">
+            😊
+          </button>
+        </div>
         <button onclick="saveCategoryName(${cat.id})"
                 class="px-2 py-1 bg-blue-600 text-white text-[10px]
                        font-bold rounded whitespace-nowrap">OK</button>
+      </div>
+      
+      <!-- Emoji Picker Panel для редактирования (скрыт) -->
+      <div id="emoji-picker-edit-panel-${cat.id}"
+           class="hidden"
+           style="
+             position: fixed;
+             z-index: 9999;
+             background: white;
+             border: 1px solid #e2e8f0;
+             border-radius: 12px;
+             padding: 12px;
+             box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+             width: 380px;
+             max-height: 400px;
+             overflow-y: auto;
+           ">
+        <div class="emoji-edit-grid-${cat.id}"></div>
       </div>
 
       <div class="flex items-center gap-1 shrink-0">
@@ -1624,15 +1651,14 @@ function renderSettingsCategoryList(cats, container) {
         ` : ''}
       </div>`;
 
-    setTimeout(() => {
-      initEmojiPicker();
-    }, 100);
-
     container.appendChild(item);
   });
 }
 
 function startCategoryEdit(catId) {
+  // Закрываем все открытые edit-пикеры при открытии нового редактора
+  closeAllEditEmojiPickers();
+
   document.getElementById(`cat-display-${catId}`)?.classList.add('hidden');
   const editWrap = document.getElementById(`cat-edit-${catId}`);
   editWrap?.classList.remove('hidden');
@@ -1640,11 +1666,14 @@ function startCategoryEdit(catId) {
 }
 
 function cancelCategoryEdit(catId) {
+  closeAllEditEmojiPickers();
   document.getElementById(`cat-display-${catId}`)?.classList.remove('hidden');
   document.getElementById(`cat-edit-${catId}`)?.classList.add('hidden');
 }
 
 async function saveCategoryName(catId) {
+  closeAllEditEmojiPickers();
+  
   const input = document.getElementById(`cat-edit-input-${catId}`);
   const name  = input?.value.trim();
   if (!name) return;
@@ -1831,9 +1860,15 @@ async function handleImport() {
     const importResult = await pywebview.api.import_data(data);
     if (importResult.success) {
       showToast('Данные импортированы', 'success');
-      await reloadData();
-      renderSettingsView();
+      
+      // Сначала переключаемся на dashboard, чтобы reloadData увидел правильный activeView
       switchView('dashboard');
+      
+      // Теперь загружаем данные — renderTable вызовется внутри reloadData
+      await reloadData();
+      
+      // Очищаем историю undo — старые действия больше не актуальны
+      UndoHistory.clear();
     } else {
       showToast('Ошибка импорта: ' + importResult.error, 'error');
     }
@@ -2411,6 +2446,211 @@ function insertEmoji(emoji) {
   
   document.getElementById('emoji-picker-panel').classList.add('hidden');
   document.removeEventListener('click', closeEmojiPicker);
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// EMOJI PICKER ДЛЯ РЕДАКТИРОВАНИЯ СУЩЕСТВУЮЩИХ КАТЕГОРИЙ
+// ══════════════════════════════════════════════════════════════
+
+// Хранит catId текущего открытого пикера редактирования
+let _activeEditEmojiCatId = null;
+
+function toggleEmojiPickerForEdit(event, catId) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  const panel = document.getElementById(`emoji-picker-edit-panel-${catId}`);
+  if (!panel) return;
+
+  const isHidden = panel.classList.contains('hidden');
+
+  // Закрываем все открытые edit-пикеры
+  closeAllEditEmojiPickers();
+
+  if (!isHidden) return; // Был открыт — просто закрыли
+
+  // Инициализируем содержимое
+  initEmojiPickerForEdit(catId);
+
+  // Позиционируем панель
+  const input = document.getElementById(`cat-edit-input-${catId}`);
+  if (input) {
+    const rect = input.getBoundingClientRect();
+    const windowHeight = window.innerHeight;
+    const panelHeight  = 400;
+
+    let top  = rect.bottom + 5;
+    let left = rect.left;
+
+    // Не вылезаем за нижнюю границу
+    if (top + panelHeight > windowHeight - 20) {
+      top = rect.top - panelHeight - 5;
+    }
+    // Не вылезаем за правую границу
+    const windowWidth  = window.innerWidth;
+    const panelWidth   = 380;
+    if (left + panelWidth > windowWidth - 20) {
+      left = windowWidth - panelWidth - 20;
+    }
+
+    panel.style.top  = `${top}px`;
+    panel.style.left = `${left}px`;
+  }
+
+  panel.classList.remove('hidden');
+  _activeEditEmojiCatId = catId;
+
+  // Закрывать по клику вне панели
+  setTimeout(() => {
+    document.addEventListener('click', _onOutsideEditEmojiClick);
+  }, 0);
+}
+
+function _onOutsideEditEmojiClick(e) {
+  if (_activeEditEmojiCatId === null) return;
+
+  const panel = document.getElementById(
+    `emoji-picker-edit-panel-${_activeEditEmojiCatId}`
+  );
+  const btn   = document.querySelector(
+    `#cat-edit-${_activeEditEmojiCatId} button[title="Добавить эмодзи"]`
+  );
+
+  if (
+    (!panel || !panel.contains(e.target)) &&
+    (!btn   || !btn.contains(e.target))
+  ) {
+    closeAllEditEmojiPickers();
+  }
+}
+
+function closeAllEditEmojiPickers() {
+  document.querySelectorAll('[id^="emoji-picker-edit-panel-"]').forEach(p => {
+    p.classList.add('hidden');
+  });
+  document.removeEventListener('click', _onOutsideEditEmojiClick);
+  _activeEditEmojiCatId = null;
+}
+
+function initEmojiPickerForEdit(catId) {
+  const panel = document.getElementById(`emoji-picker-edit-panel-${catId}`);
+  if (!panel) return;
+
+  // Очищаем и строим структуру с вкладками
+  panel.innerHTML = '';
+
+  const tabs = document.createElement('div');
+  tabs.style.cssText = `
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #e2e8f0;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  `;
+
+  const gridContainer = document.createElement('div');
+  gridContainer.style.cssText = `
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 6px;
+  `;
+
+  let firstTab = true;
+
+  Object.entries(EMOJI_CATEGORIES).forEach(([category, emojis]) => {
+    const tabBtn = document.createElement('button');
+    tabBtn.type = 'button';
+    tabBtn.style.cssText = `
+      padding: 5px 10px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 16px;
+      opacity: ${firstTab ? '1' : '0.5'};
+      border-bottom: ${firstTab ? '2px solid #3b82f6' : '2px solid transparent'};
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      flex-shrink: 0;
+    `;
+    tabBtn.textContent = category.split(' ')[0];
+    tabBtn.className   = firstTab ? 'emoji-tab-edit active' : 'emoji-tab-edit';
+
+    tabBtn.addEventListener('mouseover', () => {
+      if (!tabBtn.classList.contains('active')) tabBtn.style.opacity = '0.8';
+    });
+    tabBtn.addEventListener('mouseout', () => {
+      if (!tabBtn.classList.contains('active')) tabBtn.style.opacity = '0.5';
+    });
+
+    tabBtn.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Активируем вкладку
+      panel.querySelectorAll('.emoji-tab-edit').forEach(t => {
+        t.classList.remove('active');
+        t.style.opacity = '0.5';
+        t.style.borderBottom = '2px solid transparent';
+      });
+      tabBtn.classList.add('active');
+      tabBtn.style.opacity = '1';
+      tabBtn.style.borderBottom = '2px solid #3b82f6';
+
+      // Рендерим эмодзи
+      renderEmojiGrid(gridContainer, emojis, catId);
+    });
+
+    tabs.appendChild(tabBtn);
+
+    // Первая категория рендерится сразу
+    if (firstTab) {
+      firstTab = false;
+      // рендер будет после цикла
+    }
+  });
+
+  panel.appendChild(tabs);
+  panel.appendChild(gridContainer);
+
+  // Рендерим первую категорию
+  const firstEmojis = Object.values(EMOJI_CATEGORIES)[0];
+  renderEmojiGrid(gridContainer, firstEmojis, catId);
+}
+
+function renderEmojiGrid(gridContainer, emojis, catId) {
+  gridContainer.innerHTML = '';
+  emojis.forEach(emoji => {
+    const btn = document.createElement('button');
+    btn.type      = 'button';
+    btn.className = 'emoji-btn';
+    btn.textContent = emoji;
+    btn.title       = emoji;
+    btn.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      insertEmojiForEdit(emoji, catId);
+    });
+    gridContainer.appendChild(btn);
+  });
+}
+
+function insertEmojiForEdit(emoji, catId) {
+  const input = document.getElementById(`cat-edit-input-${catId}`);
+  if (!input) return;
+
+  const cursorPos = input.selectionStart ?? input.value.length;
+  const text      = input.value;
+
+  input.value = text.slice(0, cursorPos) + emoji + text.slice(cursorPos);
+
+  input.focus();
+  const newPos = cursorPos + emoji.length;
+  input.setSelectionRange(newPos, newPos);
+
+  // Закрываем пикер после выбора
+  closeAllEditEmojiPickers();
 }
 
 init();
