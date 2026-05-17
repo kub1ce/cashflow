@@ -22,11 +22,68 @@
   <link rel="stylesheet" href="css/style.css"/>
 </head>
 
-<body class="flex h-screen w-full overflow-hidden font-sans bg-slate-50 text-slate-900">
+<body class="flex flex-col h-screen w-full overflow-hidden font-sans bg-slate-50 text-slate-900">
+
+  <!-- TITLE BAR -->
+  <div id="title-bar">
+    <!-- Левая часть -->
+    <div class="title-bar-left">
+      <div class="title-bar-logo">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3
+              2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0
+              1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9
+              0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+      <span class="title-bar-app-name">CashFlow</span>
+    </div>
+
+    <!-- Центр: название счёта -->
+    <div class="title-bar-center" id="title-bar-account-name"></div>
+
+    <!-- Правая часть -->
+    <div class="title-bar-right">
+      <!-- Кнопка Сегодня -->
+      <button class="title-bar-today-btn" onclick="scrollToToday()" title="Перейти к текущей неделе">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="13" height="13">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0
+              002-2V7a2 2 0 00-2-2H5a2 2 0
+              00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+        Сегодня
+      </button>
+
+      <!-- Свернуть -->
+      <button class="win-btn" onclick="pywebview.api.minimize_window()" title="Свернуть">
+        <svg viewBox="0 0 10 10" fill="currentColor">
+          <rect x="0" y="4.5" width="10" height="1"/>
+        </svg>
+      </button>
+
+      <!-- Развернуть/восстановить -->
+      <button class="win-btn" id="btn-maximize" onclick="pywebview.api.toggle_maximize()" title="Развернуть">
+        <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1">
+          <rect x="0.5" y="0.5" width="9" height="9"/>
+        </svg>
+      </button>
+
+      <!-- Закрыть -->
+      <button class="win-btn close" onclick="pywebview.api.close_window()" title="Закрыть">
+        <svg viewBox="0 0 10 10" stroke="currentColor" stroke-width="1">
+          <line x1="0" y1="0" x2="10" y2="10"/>
+          <line x1="10" y1="0" x2="0" y2="10"/>
+        </svg>
+      </button>
+    </div>
+  </div>
 
   <!-- ══════════════════════════════════════════════════════
        SIDEBAR
   ══════════════════════════════════════════════════════ -->
+  <div class="flex flex-1 min-h-0 overflow-hidden">
   <aside class="w-60 bg-slate-900 text-white flex flex-col shrink-0">
 
     <!-- Логотип -->
@@ -532,7 +589,7 @@
       </div>
     </div>
   </div>
-
+</div> <!-- /.flex.flex-1 -->
 </body>
 <script src="js/main.js"></script>
 </html>

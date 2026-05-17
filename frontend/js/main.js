@@ -1917,6 +1917,10 @@ function scrollToWeek(dateStr, highlight = false) {
   if (highlight) highlightWeekColumn(targetWeek.week_start);
 }
 
+function scrollToToday() {
+  scrollToWeek(getTodayISO(), true);
+}
+
 function highlightWeekColumn(weekStart) {
   document.querySelectorAll('.week-highlight').forEach(el => {
     el.classList.remove('week-highlight');
@@ -2077,6 +2081,15 @@ async function init() {
   }
 
   await reloadData();
+
+  // Загружаем название счёта в title bar
+  try {
+    const acc = await pywebview.api.get_account_name();
+    if (acc.success && acc.name) {
+      const el = document.getElementById('title-bar-account-name');
+      if (el) el.textContent = acc.name;
+    }
+  } catch (e) { /* ignore */ }
 
   //Проверка текущей даты
   if (App.data && App.data.weeks && App.data.weeks.length > 0) {

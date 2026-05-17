@@ -50,6 +50,7 @@ def main():
         height    = 800,
         min_size  = (900, 600),
         maximized = True,
+        frameless = True,
     )
 
     api.set_window(window)

@@ -1126,3 +1126,24 @@ class API:
             db.add(cat)
             db.flush()
         return cat
+    
+
+    def minimize_window(self) -> None:
+        self._window.minimize()
+
+    def toggle_maximize(self) -> None:
+        self._window.toggle_fullscreen()
+
+    def close_window(self) -> None:
+        self._window.destroy()
+
+    def get_account_name(self) -> dict:
+        db = SessionLocal()
+        try:
+            a = db.query(Account).first()
+            return {'success': True, 'name': a.name if a else ''}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+        finally:
+            db.close()
+
