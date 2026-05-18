@@ -1129,6 +1129,32 @@ class API:
             db.flush()
         return cat
     
+    def enable_window_resize(self) -> dict:
+        """Включает возможность ресайза для frameless окна"""
+        try:
+            hwnd = self._get_hwnd()
+            if hwnd is None:
+                return {'success': False, 'error': 'Window not found'}
+
+            # Получаем текущий стиль окна
+            WS_CAPTION = 0x00C00000
+            WS_THICKFRAME = 0x00040000
+            
+            style = ctypes.windll.user32.GetWindowLongW(hwnd, -16)  # GWL_STYLE
+            
+            # Добавляем WS_THICKFRAME (позволяет ресайзить за края)
+            new_style = style | WS_THICKFRAME
+            ctypes.windll.user32.SetWindowLongW(hwnd, -16, new_style)
+            
+            # Обновляем окно
+            ctypes.windll.user32.SetWindowPos(
+                hwnd, None, 0, 0, 0, 0,
+                0x0020 | 0x0002 | 0x0001 | 0x0004  # SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER
+            )
+            
+            return {'success': True}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
 
     def _get_hwnd(self):
         """Получаем handle нативного окна по заголовку"""

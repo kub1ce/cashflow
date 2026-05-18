@@ -51,6 +51,8 @@ def main():
         min_size  = (900, 600),
         frameless = True,
         easy_drag = False,
+        fullscreen= True,
+        resizable = True,
     )
 
     api.set_window(window)

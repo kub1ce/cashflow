@@ -2179,6 +2179,12 @@ async function init() {
     else window.addEventListener('pywebviewready', resolve, { once: true });
   });
 
+  try {
+    await pywebview.api.enable_window_resize();
+  } catch (e) {
+    console.error('Ошибка включения ресайза:', e);
+  }
+
   const today = getTodayISO();
   const datePicker = document.getElementById('date-picker');
   
@@ -2191,11 +2197,6 @@ async function init() {
   }
 
   await reloadData();
-
-  // Разворачиваем окно сразу при старте
-  try {
-    await pywebview.api.startup_maximize();
-  } catch (e) { /* ignore */ }
 
   // Загружаем название счёта в title bar
   try {
