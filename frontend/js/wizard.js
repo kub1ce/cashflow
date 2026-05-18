@@ -303,6 +303,72 @@ async function finish() {
   }
 }
 
+(function initTitleBarDrag() {
+  const titleBar = document.getElementById('title-bar');
+  if (!titleBar) return;
+
+  let isDragging   = false;
+  let startMouseX  = 0;
+  let startMouseY  = 0;
+  let startWinX    = 0;
+  let startWinY    = 0;
+
+  titleBar.addEventListener('mousedown', async (e) => {
+    // Только левая кнопка мыши
+    if (e.button !== 0) return;
+
+    // Не начинаем drag если кликнули по кнопке или интерактивному элементу
+    if (e.target.closest('button')) return;
+
+    // Не drag если окно maximized — сначала restore
+    // (Windows-поведение: при перетаскивании maximize окно восстанавливается)
+    isDragging  = false;
+
+    // Запоминаем стартовую позицию мыши на экране
+    startMouseX = e.screenX;
+    startMouseY = e.screenY;
+
+    // Получаем текущую позицию окна
+    try {
+      const pos = await pywebview.api.get_window_pos();
+      if (!pos.success) return;
+      startWinX = pos.x;
+      startWinY = pos.y;
+      isDragging = true;
+    } catch (err) {
+      return;
+    }
+
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', async (e) => {
+    if (!isDragging) return;
+
+    const dx = e.screenX - startMouseX;
+    const dy = e.screenY - startMouseY;
+
+    const newX = startWinX + dx;
+    const newY = startWinY + dy;
+
+    try {
+      await pywebview.api.move_window(newX, newY);
+    } catch (err) {
+      isDragging = false;
+    }
+  });
+
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+  });
+
+  // Двойной клик по title bar — maximize/restore
+  titleBar.addEventListener('dblclick', (e) => {
+    if (e.target.closest('button')) return;
+    pywebview.api.toggle_maximize();
+  });
+})();
+
 // ══════════════════════════════════════════════════════════════
 // ИНИЦИАЛИЗАЦИЯ
 // ══════════════════════════════════════════════════════════════
