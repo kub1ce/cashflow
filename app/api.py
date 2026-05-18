@@ -1,4 +1,6 @@
 import os
+import ctypes
+import ctypes.wintypes
 import json
 from datetime import date, timedelta
 
@@ -1128,14 +1130,74 @@ class API:
         return cat
     
 
-    def minimize_window(self) -> None:
-        self._window.minimize()
+    def _get_hwnd(self):
+        """Получаем handle нативного окна по заголовку"""
+        return ctypes.windll.user32.FindWindowW(None, 'Cash Flow')
 
-    def toggle_maximize(self) -> None:
-        self._window.toggle_fullscreen()
+    def startup_maximize(self) -> dict:
+        """Вызывается при старте — разворачивает окно как maximize (уважает taskbar)"""
+        try:
+            hwnd = self._get_hwnd()
+            ctypes.windll.user32.ShowWindow(hwnd, 3)  # SW_MAXIMIZE
+            return {'success': True}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
 
-    def close_window(self) -> None:
-        self._window.destroy()
+    def minimize_window(self) -> dict:
+        try:
+            hwnd = self._get_hwnd()
+            ctypes.windll.user32.ShowWindow(hwnd, 6)  # SW_MINIMIZE
+            return {'success': True}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    def toggle_maximize(self) -> dict:
+        try:
+            hwnd = self._get_hwnd()
+            is_maximized = ctypes.windll.user32.IsZoomed(hwnd)
+            if is_maximized:
+                ctypes.windll.user32.ShowWindow(hwnd, 9)   # SW_RESTORE
+            else:
+                ctypes.windll.user32.ShowWindow(hwnd, 3)   # SW_MAXIMIZE
+            return {'success': True, 'maximized': not bool(is_maximized)}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    def close_window(self) -> dict:
+        try:
+            self._window.destroy()
+            return {'success': True}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    def move_window(self, x: int, y: int) -> dict:
+        """Перемещает окно в указанные координаты"""
+        try:
+            hwnd = self._get_hwnd()
+            # Получаем текущий размер окна
+            rect = ctypes.wintypes.RECT()
+            ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(rect))
+            w = rect.right  - rect.left
+            h = rect.bottom - rect.top
+            # Перемещаем без изменения размера
+            ctypes.windll.user32.MoveWindow(hwnd, x, y, w, h, True)
+            return {'success': True}
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    def get_window_pos(self) -> dict:
+        """Возвращает текущую позицию окна"""
+        try:
+            hwnd = self._get_hwnd()
+            rect = ctypes.wintypes.RECT()
+            ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(rect))
+            return {
+                'success': True,
+                'x': rect.left,
+                'y': rect.top,
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
 
     def get_account_name(self) -> dict:
         db = SessionLocal()

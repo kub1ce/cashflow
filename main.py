@@ -49,7 +49,6 @@ def main():
         width     = 1400,
         height    = 800,
         min_size  = (900, 600),
-        maximized = True,
         frameless = True,
     )
 
