@@ -1,4 +1,18 @@
 // ══════════════════════════════════════════════════════════════
+// ИНИЦИАЛИЗАЦИЯ PYWEBVIEW
+// ══════════════════════════════════════════════════════════════
+
+async function initPyWebview() {
+  return new Promise(resolve => {
+    if (window.pywebview && window.pywebview.api) {
+      resolve();
+    } else {
+      window.addEventListener('pywebviewready', resolve, { once: true });
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
 // ДАННЫЕ
 // ══════════════════════════════════════════════════════════════
 
@@ -369,25 +383,45 @@ async function finish() {
   });
 })();
 
+
+// ══════════════════════════════════════════════════════════════
+// RESIZE ОКНА
+// ══════════════════════════════════════════════════════════════
+
+async function initWindowResize() {
+  try {
+    await pywebview.api.enable_window_resize();
+    console.log('Window resize enabled');
+  } catch (e) {
+    console.error('Ошибка включения ресайза:', e);
+  }
+}
+
+
 // ══════════════════════════════════════════════════════════════
 // ИНИЦИАЛИЗАЦИЯ
 // ══════════════════════════════════════════════════════════════
 
-// Предустанавливаем дату начала = первый понедельник текущего года
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+  // Ждём готовности pywebview
+  await initPyWebview();
+  
+  // Инициализируем resize
+  await initWindowResize();
+
   // Устанавливаем понедельник текущей недели
   const today = new Date();
-  const day   = today.getDay();
-  const diff  = day === 0 ? -6 : 1 - day; // сдвиг до понедельника
+  const day = today.getDay();
+  const diff = day === 0 ? -6 : 1 - day; // сдвиг до понедельника
   today.setDate(today.getDate() + diff);
-  
-  const year  = today.getFullYear();
+
+  const year = today.getFullYear();
   const month = String(today.getMonth() + 1).padStart(2, '0');
   const dayNum = String(today.getDate()).padStart(2, '0');
 
   document.getElementById('period-start').value =
     `${year}-${month}-${dayNum}`;
 
-// Показываем первый шаг
-updateUI(1);
+  // Показываем первый шаг
+  updateUI(1);
 });
