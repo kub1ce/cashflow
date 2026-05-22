@@ -53,5 +53,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='./icon-256x256.ico',
+    icon='./frontend/icon-256x256.ico',
 )
