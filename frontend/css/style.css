@@ -112,6 +112,25 @@ body {
   letter-spacing: -0.01em;
 }
 
+/* Ячейка с плановым значением */
+.data-cell.has-plan {
+  background: #b3becc !important;  /* Светло-голубой */
+}
+
+/* Текущая неделя + план */
+.data-cell.has-plan.current-week {
+  background: linear-gradient(135deg, #b3becc 0%) !important;
+}
+
+/* Переход при наведении */
+.data-cell.has-plan:hover {
+  background: #b3becc !important;
+}
+
+.data-cell.has-plan.current-week:hover {
+  background: linear-gradient(135deg, #b3becc 0%) !important;
+}
+
 /* ── Sticky левая колонка ─────────────────────────────────── */
 .td-sticky {
   position: sticky;
@@ -426,12 +445,6 @@ body {
 }
 
 /* ── Строка баланса (sticky bottom) ──────────────────────── */
-.row-balance {
-  position: sticky;
-  bottom: 0;
-  z-index: 20;
-}
-
 .row-balance td {
   color: white;
   font-weight: 700;

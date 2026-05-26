@@ -32,7 +32,20 @@ const PROTECTED_CATS = [
   'Возврат займа',
   'Покрытие из копилки',
   'Займ',
+  'В копилку',
 ];
+
+// Категории копилки — триггерят парную операцию
+const SAVING_CATEGORIES = ['Покрытие из копилки', 'В копилку'];
+
+function getSavingCategoryName(catId) {
+  if (!App.data) return null;
+  const cat = App.data.categories.find(c => c.id === catId);
+  if (!cat) return null;
+  return SAVING_CATEGORIES.includes(cat.name) ? cat.name : null;
+}
+
+const PAST_WEEK_COLOR = '#c7defc';
 
 // ══════════════════════════════════════════════════════════════
 // УТИЛИТЫ
@@ -57,6 +70,11 @@ function getMondayOf(dateStr) {
 function isCurrentWeek(weekStart, weekEnd) {
   const today = getTodayISO();
   return today >= weekStart && today <= weekEnd;
+}
+
+function isPastWeek(weekStart, weekEnd) {
+  const today = getTodayISO();
+  return today > weekEnd;
 }
 
 function evalAmount(str) {
@@ -132,6 +150,31 @@ function isUndoShortcut(e) {
          (e.code === 'KeyZ' || e.key === 'z' || e.key === 'Z' || e.key === 'я' || e.key === 'Я');
 }
 
+function handleReconcileInput() {
+  const actual = parseFloat(this.value);
+  const calcEl = document.getElementById('reconcile-calculated');
+  const calculated = parseFloat(calcEl.dataset.value || '0');
+  const preview = document.getElementById('reconcile-diff-preview');
+
+  if (isNaN(actual)) { 
+    preview.classList.add('hidden'); 
+    return; 
+  }
+
+  const diff = actual - calculated;
+  if (Math.abs(diff) < 0.01) {
+    preview.style.cssText = 'padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:12px;color:#166534;';
+    preview.textContent = '✓ Балансы совпадают. Корректировка не нужна.';
+  } else if (diff > 0) {
+    preview.style.cssText = 'padding:12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;font-size:12px;color:#1d4ed8;';
+    preview.innerHTML = `Будет добавлен доход <strong>«Незапланированные доходы» ${formatAmount(diff)} ₽</strong>`;
+  } else {
+    preview.style.cssText = 'padding:12px;background:#fff1f2;border:1px solid #fecdd3;border-radius:8px;font-size:12px;color:#be123c;';
+    preview.innerHTML = `Будет добавлен расход <strong>«Незапланированные расходы» ${formatAmount(Math.abs(diff))} ₽</strong>`;
+  }
+  preview.classList.remove('hidden');
+}
+
 // ══════════════════════════════════════════════════════════════
 // ПЕРЕКЛЮЧЕНИЕ VIEWS
 // ══════════════════════════════════════════════════════════════
@@ -173,7 +216,7 @@ function renderTable(data) {
   const expenseCats = categories.filter(c => c.type === 'expense');
   const weekColor   = vc.weekColor || '#3b82f6';
   const cwColor     = vc.currentWeekColor || '#fef08a';
-
+  
   // ── ШАПКА ──────────────────────────────────────────────────
   const tr = document.createElement('tr');
 
@@ -193,6 +236,7 @@ function renderTable(data) {
     th.dataset.weekStart = week.week_start;
 
     const isCurrent = isCurrentWeek(week.week_start, week.week_end);
+    const isPast = isPastWeek(week.week_start, week.week_end);
 
     const startD = new Date(week.week_start + 'T00:00:00');
     const endD   = new Date(week.week_end   + 'T00:00:00');
@@ -207,6 +251,15 @@ function renderTable(data) {
         </div>
         <div class="week-dates"
             style="color:${textColor};background:rgba(0,0,0,0.12)">
+          ${fmt(startD)} - ${fmt(endD)}
+        </div>`;
+    } else if (isPast) {
+      th.style.backgroundColor = PAST_WEEK_COLOR;
+      th.innerHTML = `
+        <div class="week-number" style="color:#64748b">
+          Неделя ${week.week_number}
+        </div>
+        <div class="week-dates" style="color:#475569">
           ${fmt(startD)} - ${fmt(endD)}
         </div>`;
     } else {
@@ -327,11 +380,27 @@ function makeDataCell(cat, week, plans, facts, cwColor) {
   td.dataset.colorCode  = cat.color_code;
 
   const isCurrent = isCurrentWeek(week.week_start, week.week_end);
+  const isPast = isPastWeek(week.week_start, week.week_end);
+  
   if (isCurrent) {
     td.style.backgroundColor = cwColor;
+  } else if (isPast) {
+    td.style.backgroundColor = PAST_WEEK_COLOR; // Cветло-серый для прошедших ячеек
   }
 
-  refreshCellContent(td, plans, facts);
+  const key = `${cat.id}:${week.week_start}`;
+  const hasPlan = !!(plans?.[key]);
+  const hasFact = !!(facts?.[key] && facts[key].length > 0);
+
+  // Добавляем класс если есть только план (нет факта) - только для НЕ прошедших недель
+  if (hasPlan && !hasFact && !isPast) { // используем hasPlan/hasFact вместо isPlan/isFact
+    td.classList.add('has-plan');
+    if (isCurrent) {
+      td.classList.add('current-week');
+    }
+  }
+
+  refreshCellContent(td, plans, facts)
 
   // Левый клик — открыть редактор
   td.addEventListener('click', e => {
@@ -365,6 +434,17 @@ function refreshCellContent(td, plans, facts) {
   const planAmt   = plan ? plan.amount : null;
   const isFact    = factTotal !== null && factTotal !== 0;
   const isPlan    = planAmt !== null && planAmt !== 0;
+
+  td.classList.remove('has-plan', 'current-week');
+  
+  // Если есть только план (нет факта) — добавляем серый фон
+  if (isPlan && !isFact) {
+    td.classList.add('has-plan');
+    const isCurrent = isCurrentWeek(td.dataset.weekStart, td.dataset.weekEnd);
+    if (isCurrent) {
+      td.classList.add('current-week');
+    }
+  }
 
   let html = '';
 
@@ -470,9 +550,12 @@ function openCellEditor(td, initialMode) {
   });
 
   // Клик вне редактора — закрываем БЕЗ сохранения
-  setTimeout(() => {
-    document.addEventListener('click', onOutsideClick);
-  }, 0);
+// Клик вне редактора — закрываем БЕЗ сохранения
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      document.addEventListener('click', onOutsideClick);
+    });
+  });
 }
 
 function onOutsideClick(e) {
@@ -510,11 +593,43 @@ async function saveCellEditor() {
   const amount    = evalAmount(input.value);
   const { categoryId, weekStart, weekEnd, mode, el } = App.editing;
 
+  if (amount < 0) {
+    showToast('Сумма не может быть отрицательной', 'error');
+    refreshCellContent(el, App.data.plans, App.data.facts);
+    return;
+  }
+
   // Снимаем редактор
   const editor = document.getElementById('active-cell-editor');
   if (editor) editor.remove();
 
   if (!categoryId || !weekStart) return;
+
+  // ── ПРОВЕРКА КОПИЛКИ ──────────────────────────────────────
+  // ВСЕ факты по копилочным категориям ведём только через save_paired_saving
+  if (mode === 'fact') {
+    const savingName = getSavingCategoryName(categoryId);
+    if (savingName) {
+      try {
+        await pywebview.api.save_paired_saving({
+          category_id:     categoryId,
+          week_start_date: weekStart,
+          week_end_date:   weekEnd,
+          amount,
+        });
+
+        showToast('Операция с копилкой выполнена', 'success');
+        await reloadData();
+        return; // дальше не идём, чтобы не вызвать save_cell второй раз
+      } catch (e) {
+        console.error('Ошибка save_paired_saving:', e);
+        showToast('Ошибка сохранения операции копилки', 'error');
+        await reloadData();
+        return;
+      }
+    }
+  }
+  // ─────────────────────────────────────────────────────────
 
   const key = `${categoryId}:${weekStart}`;
   
@@ -603,24 +718,35 @@ function recalcTotalsAndBalance() {
     return { weekStart: week.week_start, inc, exp };
   });
 
-  // Обновляем строку итого доходы
+  // ── Итого доходы ─────────────────────────────
   const incTotalCells = document.querySelectorAll(
     '.row-total-income td.data-cell-total'
   );
+
   incTotalCells.forEach((td, i) => {
     const { inc } = weekTotals[i] || {};
-    td.querySelector('div').textContent = inc ? formatAmount(inc) : '';
-    td.querySelector('div').style.color = vc.totalIncomeColor || '#16a34a';
+
+    const div = td.querySelector('div');
+    if (!div) return;  // защита от null
+
+    div.textContent = inc ? formatAmount(inc) : '';
+    div.style.color = vc.totalIncomeColor || '#16a34a';
   });
 
-  // Обновляем строку итого расходы
+
+  // ── Итого расходы ────────────────────────────
   const expTotalCells = document.querySelectorAll(
     '.row-total-expense td.data-cell-total'
   );
+
   expTotalCells.forEach((td, i) => {
     const { exp } = weekTotals[i] || {};
-    td.querySelector('div').textContent = exp ? `-${formatAmount(exp)}` : '';
-    td.querySelector('div').style.color = vc.totalExpenseColor || '#ef4444';
+
+    const div = td.querySelector('div');
+    if (!div) return;  // защита от null
+
+    div.textContent = exp ? `-${formatAmount(exp)}` : '';
+    div.style.color = vc.totalExpenseColor || '#ef4444';
   });
 
   // Обновляем строку баланса
@@ -631,30 +757,39 @@ function recalcTotalsAndBalance() {
   const balanceCells = document.querySelectorAll('.row-balance td.balance-data-cell');
   balanceCells.forEach((td, i) => {
     const week = weeks[i];
-  const wt = weekTotals[i];
-  if (!wt) return;
-  running += wt.inc - wt.exp;
+    const wt = weekTotals[i];
+    if (!wt) return;
+    running += wt.inc - wt.exp;
 
-  const inner = td.querySelector('.balance-cell-inner');
-  const isNeg = running < 0;
-  const isCurrent = isCurrentWeek(week.week_start, week.week_end);
-  
-  // Сначала выставляем фон, потом по нему считаем контраст
-  const bgColor = isCurrent ? cwColor : weekColor;
-  td.style.backgroundColor = bgColor;
-  
-  const textColor = isNeg ? negColor : getContrastColor(bgColor);
+    const inner = td.querySelector('.balance-cell-inner');
+    const isNeg = running < 0;
+    const isCurrent = isCurrentWeek(week.week_start, week.week_end);
+    const isPast = isPastWeek(week.week_start, week.week_end);
+    
+    // Сначала выставляем фон, потом по нему считаем контраст
+    let bgColor;
+    if (isCurrent) {
+      bgColor = cwColor;
+    } else if (isPast) {
+      bgColor = PAST_WEEK_COLOR; // Серый для прошедших
+    } else {
+      bgColor = weekColor;
+    }
+    
+    td.style.backgroundColor = bgColor;
+    
+    const textColor = isNeg ? negColor : getContrastColor(bgColor);
 
-  inner.innerHTML = `
-    ${isNeg ? `
-      <button class="wand-btn"
-        onclick="handleDeficit(event,'${week.week_start}','${week.week_end}',${Math.abs(running).toFixed(2)})"
-        title="Покрыть дефицит">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-magic" viewBox="0 0 16 16">
-            <path d="M9.5 2.672a.5.5 0 1 0 1 0V.843a.5.5 0 0 0-1 0zm4.5.035A.5.5 0 0 0 13.293 2L12 3.293a.5.5 0 1 0 .707.707zM7.293 4A.5.5 0 1 0 8 3.293L6.707 2A.5.5 0 0 0 6 2.707zm-.621 2.5a.5.5 0 1 0 0-1H4.843a.5.5 0 1 0 0 1zm8.485 0a.5.5 0 1 0 0-1h-1.829a.5.5 0 0 0 0 1zM13.293 10A.5.5 0 1 0 14 9.293L12.707 8a.5.5 0 1 0-.707.707zM9.5 11.157a.5.5 0 0 0 1 0V9.328a.5.5 0 0 0-1 0zm1.854-5.097a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L8.646 5.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0l1.293-1.293Zm-3 3a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L.646 13.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0z"/>
-          </svg>
-      </button>` : ''}
-      <span style="color:${textColor}">${formatAmount(running)}</span>`;
+    inner.innerHTML = `
+      ${isNeg ? `
+        <button class="wand-btn"
+          onclick="handleDeficit(event,'${week.week_start}','${week.week_end}',${Math.abs(running).toFixed(2)})"
+          title="Покрыть дефицит">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-magic" viewBox="0 0 16 16">
+              <path d="M9.5 2.672a.5.5 0 1 0 1 0V.843a.5.5 0 0 0-1 0zm4.5.035A.5.5 0 0 0 13.293 2L12 3.293a.5.5 0 1 0 .707.707zM7.293 4A.5.5 0 1 0 8 3.293L6.707 2A.5.5 0 0 0 6 2.707zm-.621 2.5a.5.5 0 1 0 0-1H4.843a.5.5 0 1 0 0 1zm8.485 0a.5.5 0 1 0 0-1h-1.829a.5.5 0 0 0 0 1zM13.293 10A.5.5 0 1 0 14 9.293L12.707 8a.5.5 0 1 0-.707.707zM9.5 11.157a.5.5 0 0 0 1 0V9.328a.5.5 0 0 0-1 0zm1.854-5.097a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L8.646 5.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0l1.293-1.293Zm-3 3a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L.646 13.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0z"/>
+            </svg>
+        </button>` : ''}
+        <span style="color:${textColor}">${formatAmount(running)}</span>`;
   });
 }
 
@@ -678,9 +813,12 @@ function makeTotalRow(type, label, weeks, typeCats, plans, facts, color, cwColor
     td.dataset.weekStart = week.week_start;
 
     const isCurrent = isCurrentWeek(week.week_start, week.week_end);
+    const isPast = isPastWeek(week.week_start, week.week_end);
     
     if (isCurrent) {
       td.style.backgroundColor = cwColor;
+    } else if (isPast) {
+      td.style.backgroundColor = PAST_WEEK_COLOR; // Серый для прошедших
     } else {
       if (type === 'income') td.style.background = 'rgba(236,253,245,0.3)';
       if (type === 'expense') td.style.background = 'rgba(255,241,242,0.3)';
@@ -734,40 +872,45 @@ function makeBalanceRow(weeks, categories, plans, facts, initialBalance,
 
   weeks.forEach((week, i) => {
     let inc = 0, exp = 0;
-
+  
     incomeCats.forEach(cat => {
       const key = `${cat.id}:${week.week_start}`;
       const fa  = facts[key];
       const p   = plans[key];
       inc += fa && fa.length ? fa.reduce((s,f)=>s+f.amount,0) : (p ? p.amount : 0);
     });
-
+  
     expenseCats.forEach(cat => {
       const key = `${cat.id}:${week.week_start}`;
       const fa  = facts[key];
       const p   = plans[key];
       exp += fa && fa.length ? fa.reduce((s,f)=>s+f.amount,0) : (p ? p.amount : 0);
     });
-
+  
     running += inc - exp;
     const isNeg = running < 0;
-
+  
     const td = document.createElement('td');
     td.className = 'balance-data-cell';
     td.dataset.weekStart = week.week_start;
-    td.style.backgroundColor = weekColor;
     td.style.borderColor = 'rgba(255,255,255,0.3)';
     td.style.textAlign = 'right';
-
-    const isCurrent   = isCurrentWeek(week.week_start, week.week_end);
-    const cellBgColor = isCurrent ? cwColor : weekColor;
+  
+    const isCurrent = isCurrentWeek(week.week_start, week.week_end);
+    const isPast = isPastWeek(week.week_start, week.week_end);
+    
+    let cellBgColor;
+    if (isCurrent) {
+      cellBgColor = cwColor;
+    } else if (isPast) {
+      cellBgColor = PAST_WEEK_COLOR; // Серый для прошедших недель в балансе
+    } else {
+      cellBgColor = weekColor;
+    }
+    
+    td.style.backgroundColor = cellBgColor;
     const cellTextColor = getContrastColor(cellBgColor);
-
-    if (isCurrent) td.style.backgroundColor = cwColor;
-    else           td.style.backgroundColor = weekColor;
-    // Для текущей недели в строке баланса считаем контраст отдельно
-    const cwBalanceColor = getContrastColor(cwColor);
-
+  
     td.innerHTML = `
       <div class="balance-cell-inner" style="padding:0 8px;">
         ${isNeg ? `
@@ -779,12 +922,12 @@ function makeBalanceRow(weeks, categories, plans, facts, initialBalance,
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-magic" viewBox="0 0 16 16">
             <path d="M9.5 2.672a.5.5 0 1 0 1 0V.843a.5.5 0 0 0-1 0zm4.5.035A.5.5 0 0 0 13.293 2L12 3.293a.5.5 0 1 0 .707.707zM7.293 4A.5.5 0 1 0 8 3.293L6.707 2A.5.5 0 0 0 6 2.707zm-.621 2.5a.5.5 0 1 0 0-1H4.843a.5.5 0 1 0 0 1zm8.485 0a.5.5 0 1 0 0-1h-1.829a.5.5 0 0 0 0 1zM13.293 10A.5.5 0 1 0 14 9.293L12.707 8a.5.5 0 1 0-.707.707zM9.5 11.157a.5.5 0 0 0 1 0V9.328a.5.5 0 0 0-1 0zm1.854-5.097a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L8.646 5.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0l1.293-1.293Zm-3 3a.5.5 0 0 0 0-.706l-.708-.708a.5.5 0 0 0-.707 0L.646 13.94a.5.5 0 0 0 0 .707l.708.708a.5.5 0 0 0 .707 0z"/>
           </svg>
-</button>` : ''}
+        </button>` : ''}
         <span style="color:${isNeg ? negColor : cellTextColor}">
           ${formatAmount(running)}
         </span>
       </div>`;
-
+  
     tr.appendChild(td);
   });
 
@@ -1218,7 +1361,19 @@ async function submitDeficit() {
         });
 
         closeDeficitModal();
-        showToast(`Займ оформлен, ${count} выплат запланировано`, 'success');
+        let periodLabel = '';
+        if (period === 'weeks') {
+          periodLabel = pluralWeeks(count);  // Используем уже существующую функцию
+        } else {
+          // Для месяцев
+          const m10 = count % 10, m100 = count % 100;
+          if (m100 >= 11 && m100 <= 19) periodLabel = 'месяцев';
+          else if (m10 === 1) periodLabel = 'месяц';
+          else if (m10 >= 2 && m10 <= 4) periodLabel = 'месяца';
+          else periodLabel = 'месяцев';
+        }
+        
+        showToast(`Займ оформлен, ${count} ${periodLabel} запланировано`, 'success');
         await reloadData();
       } else {
         showToast('Ошибка: ' + result.error, 'error');
@@ -1255,7 +1410,7 @@ async function updateReconcileCalculated(dateStr) {
   if (!dateStr) return;
 
   // Находим неделю в которую попадает выбранная дата
-  const targetWeek = App.data?.weeks.find(w =>
+  const targetWeek = App.data?.weeks?.find(w =>
     dateStr >= w.week_start && dateStr <= w.week_end
   );
 
@@ -1291,28 +1446,7 @@ function closeReconcileModal() {
   hideModal('reconcile-modal');
 }
 
-document.getElementById('reconcile-actual')
-  ?.addEventListener('input', function() {
-    const actual     = parseFloat(this.value);
-    const calcEl     = document.getElementById('reconcile-calculated');
-    const calculated = parseFloat(calcEl.dataset.value || '0');
-    const preview    = document.getElementById('reconcile-diff-preview');
-
-    if (isNaN(actual)) { preview.classList.add('hidden'); return; }
-
-    const diff = actual - calculated;
-    if (Math.abs(diff) < 0.01) {
-      preview.style.cssText = 'padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:12px;color:#166534;';
-      preview.textContent   = '✓ Балансы совпадают. Корректировка не нужна.';
-    } else if (diff > 0) {
-      preview.style.cssText = 'padding:12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;font-size:12px;color:#1d4ed8;';
-      preview.innerHTML     = `Будет добавлен доход <strong>«Незапланированные доходы» ${formatAmount(diff)} ₽</strong>`;
-    } else {
-      preview.style.cssText = 'padding:12px;background:#fff1f2;border:1px solid #fecdd3;border-radius:8px;font-size:12px;color:#be123c;';
-      preview.innerHTML     = `Будет добавлен расход <strong>«Незапланированные расходы» ${formatAmount(Math.abs(diff))} ₽</strong>`;
-    }
-    preview.classList.remove('hidden');
-  });
+document.getElementById('reconcile-actual')?.addEventListener('input', handleReconcileInput);
 
 async function submitReconcile() {
   const actualVal  = parseFloat(document.getElementById('reconcile-actual').value);
@@ -1683,7 +1817,6 @@ async function saveCategoryName(catId) {
     if (result.success) {
       showToast('Категория обновлена', 'success');
       await reloadData();
-      renderTable(App.data);
       renderSettingsView();
     } else {
       showToast('Ошибка: ' + result.error, 'error');
@@ -1701,7 +1834,6 @@ async function updateCategoryColor(catId, colorValue, inputEl) {
   try {
     await pywebview.api.update_category(catId, { color_code: colorValue });
     await reloadData();
-    renderTable(App.data);
   } catch (e) {
     showToast('Ошибка обновления цвета', 'error');
   }
@@ -1721,7 +1853,6 @@ async function deleteCategorySettings(catId, catName) {
       
       // Перезагружаем и ВСЕГДА перерисовываем
       await reloadData();
-      renderTable(App.data);
       
       if (App.activeView === 'settings') {
         renderSettingsView();
@@ -1752,7 +1883,6 @@ async function submitAddCategorySettings() {
       
       // Перезагружаем данные И ВСЕГДА ПЕРЕРИСОВЫВАЕМ ТАБЛИЦУ
       await reloadData();
-      renderTable(App.data);  // Всегда перерисовываем
       
       // Если открыта settings, то обновим и её
       if (App.activeView === 'settings') {
@@ -1961,6 +2091,17 @@ function showConfirm(title, subtitle = '') {
     const ok     = document.getElementById('confirm-ok');
     const cancel = document.getElementById('confirm-cancel');
 
+    if (title.includes('Удалить')) {
+      ok.textContent = 'Удалить';
+      ok.style.background = '#ef4444';  // Красный цвет для удаления
+    } else if (title.includes('Импортировать')) {
+      ok.textContent = 'Импортировать';
+      ok.style.background = '#3b82f6';  // Синий цвет для импорта
+    } else {
+      ok.textContent = 'Подтвердить';
+      ok.style.background = '#ef4444';
+    }
+
     const cleanup = () => {
       hideModal('confirm-dialog');
       ok.replaceWith(ok.cloneNode(true));
@@ -2162,7 +2303,12 @@ async function reloadData() {
       timeoutPromise
     ]);
     
-    if (data.error) { console.error('Ошибка данных:', data.error); return; }
+    if (data.error) {
+      console.error('Ошибка данных:', data.error);
+      showToast('Ошибка загрузки данных', 'error');
+      return;
+    }
+
     App.data = data;
     
     if (App.activeView === 'dashboard') {
@@ -2170,6 +2316,7 @@ async function reloadData() {
     }
   } catch (e) {
     console.error('Ошибка загрузки:', e);
+    showToast('Не удалось загрузить данные. Перезагрузите страницу.', 'error'); // ✅ Добавить toast
   }
 }
 
@@ -2560,7 +2707,11 @@ function closeEmojiPicker(e) {
   const btn = document.getElementById('emoji-picker-btn');
   const input = document.getElementById('s-new-cat-name');
   
-  if (!panel.contains(e.target) && !btn.contains(e.target) && !input.contains(e.target)) {
+  if (
+    (!panel || !panel.contains(e.target)) &&
+    (!btn   || !btn.contains(e.target)) &&
+    (!input || !input.contains(e.target))
+  ) {
     panel.classList.add('hidden');
     document.removeEventListener('click', closeEmojiPicker);
   }

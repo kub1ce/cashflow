@@ -18,13 +18,17 @@ PROTECTED_CATEGORIES = {
     'Возврат займа',
     'Покрытие из копилки',
     'Займ',
+    'В копилку',
 }
+
+WINDOW_TITLE = 'Cash Flow'
 
 class API:
 
     def __init__(self):
         self._window = None
         self._frontend_dir = None
+        self._hwnd = None
 
     def set_window(self, window):
         self._window = window
@@ -34,9 +38,30 @@ class API:
 
     # ── Навигация ──────────────────────────────────────────────────────────────
     def navigate_to(self, page: str):
-        path = os.path.normpath(os.path.join(self._frontend_dir, page))
-        url  = 'file:///' + path.replace('\\', '/')
-        # Запускаем в отдельном потоке чтобы не блокировать callback
+        if not self._frontend_dir:
+            return {'success': False, 'error': 'Frontend directory не установлен'}
+        frontend_dir = os.path.normpath(self._frontend_dir)
+        path         = os.path.normpath(os.path.join(frontend_dir, page))
+        
+        #  Проверяем что итоговый путь находится внутри frontend_dir
+        # os.path.commonpath сравнивает без учёта слэшей и регистра на Windows
+        try:
+            common = os.path.commonpath([frontend_dir, path])
+        except ValueError:
+            # На Windows commonpath кидает ValueError если пути на разных дисках
+            return {'success': False, 'error': 'Недопустимый путь'}
+
+        if common != frontend_dir:
+            return {
+                'success': False,
+                'error':   f'Недопустимый путь: выход за пределы директории приложения'
+            }
+
+        #  Проверяем что файл реально существует
+        if not os.path.isfile(path):
+            return {'success': False, 'error': f'Страница не найдена: {page}'}
+
+        url = 'file:///' + path.replace('\\', '/')
         import threading
         threading.Timer(0.1, lambda: self._window.load_url(url)).start()
         return {'success': True}
@@ -185,7 +210,13 @@ class API:
                 return {'success': False, 'error': 'Категория не найдена'}
 
             if 'name' in data:
+                if cat.name in PROTECTED_CATEGORIES:
+                    return {
+                        'success': False,
+                        'error': f'Категорию «{cat.name}» нельзя переименовать'
+                    }
                 cat.name = data['name']
+
             if 'color_code' in data:
                 cat.color_code = data['color_code']
 
@@ -290,6 +321,11 @@ class API:
             if not s or not s.planning_start_date:
                 return {'error': 'no_settings'}
 
+            # Проверяем счёт сразу — это аномалия, не норма
+            a = db.query(Account).first()
+            if not a:
+                return {'error': 'no_account'}
+
             weeks = self._generate_weeks(s.planning_start_date)
 
             cats = db.query(Category).order_by(Category.sort_order).all()
@@ -314,7 +350,6 @@ class API:
                     'comment': f.comment,
                 })
 
-            a = db.query(Account).first()
             vc = json.loads(s.visual_config or '{}')
 
             return {
@@ -322,11 +357,11 @@ class API:
                 'categories':      categories,
                 'plans':           plans,
                 'facts':           facts,
-                'initial_balance': a.initial_balance if a else 0.0,
+                'initial_balance': a.initial_balance,  # a точно не None
                 'settings': {
-                    'financial_strategy':   s.financial_strategy,
-                    'planning_start_date':  s.planning_start_date,
-                    'visual_config':        vc,
+                    'financial_strategy':  s.financial_strategy,
+                    'planning_start_date': s.planning_start_date,
+                    'visual_config':       vc,
                 },
             }
         finally:
@@ -391,8 +426,10 @@ class API:
                 Fact.external_id     == None,
             )
         ).first()
-        a          = db.query(Account).first()
-        account_id = a.id if a else 1
+        a = db.query(Account).first()
+        if not a:
+            raise RuntimeError('Счёт не создан')
+        account_id = a.id
 
         if amount == 0:
             if existing:
@@ -417,18 +454,28 @@ class API:
 
     # ── Автозаполнение ────────────────────────────────────────────────────────
     def autofill(self, data: dict) -> dict:
-        """
-        data = {
-            category_id:  1,
-            start_date:   'YYYY-MM-DD',
-            amount:       50000,
-            mode:         'weeks' | 'months',
-            count:        6,        # кол-во недель ИЛИ месяцев
-            day_of_month: 10,       # только для mode='months'
-        }
-        """
         db = SessionLocal()
         try:
+            #  Валидация обязательных полей перед использованием
+            if 'start_date' not in data:
+                return {'success': False, 'error': 'Не указана дата начала (start_date)'}
+            if 'category_id' not in data:
+                return {'success': False, 'error': 'Не указана категория (category_id)'}
+            if 'count' not in data:
+                return {'success': False, 'error': 'Не указано количество периодов (count)'}
+            if 'amount' not in data:
+                return {'success': False, 'error': 'Не указана сумма (amount)'}
+
+            #  Отдельная валидация даты с понятным сообщением об ошибке
+            try:
+                date.fromisoformat(data['start_date'])
+            except (ValueError, TypeError):
+                return {
+                    'success': False,
+                    'error':   f'Некорректный формат даты: «{data["start_date"]}». '
+                            f'Ожидается YYYY-MM-DD'
+                }
+
             category_id  = int(data['category_id'])
             start_date   = data['start_date']
             amount       = float(data['amount'])
@@ -440,41 +487,35 @@ class API:
                 return {'success': False, 'error': 'Количество должно быть > 0'}
             if amount < 0:
                 return {'success': False, 'error': 'Сумма не может быть отрицательной'}
+            if mode not in ('weeks', 'months'):
+                return {'success': False, 'error': f'Неизвестный режим: «{mode}»'}
 
-            # Генерируем список дат для заполнения
             target_dates = []
 
             if mode == 'weeks':
-                # Каждую неделю начиная с понедельника start_date
-                week_start = self._get_monday(start_date)
+                week_start = self._get_monday(start_date)  #  дата уже проверена выше
                 for i in range(count):
                     target_dates.append(week_start + timedelta(weeks=i))
 
             elif mode == 'months':
-                # Каждый месяц в указанный день
-                start = date.fromisoformat(start_date)
+                start = date.fromisoformat(start_date)     #  безопасно
                 year  = start.year
                 month = start.month
 
                 for i in range(count):
-                    # Последний день месяца
                     if month == 12:
                         last_day = 31
                     else:
                         last_day = (date(year, month + 1, 1) - timedelta(days=1)).day
 
-                    # Берём указанный день или последний если не существует
                     actual_day = min(day_of_month, last_day)
                     target_dates.append(date(year, month, actual_day))
 
-                    # Следующий месяц
                     month += 1
                     if month > 12:
                         month = 1
                         year  += 1
 
-            # Для каждой даты находим неделю и ставим план
-            # Если несколько дат попали в одну неделю — суммируем
             week_amounts: dict = {}
             for target_date in target_dates:
                 monday = self._get_monday(target_date.isoformat())
@@ -489,7 +530,6 @@ class API:
                     }
                 week_amounts[key]['amount'] += amount
 
-            # Сохраняем планы
             filled = 0
             for wk in week_amounts.values():
                 self._upsert_plan(
@@ -521,10 +561,16 @@ class API:
             return_date = data.get('return_date')
 
             if strategy == 'saving_first':
-                cat = self._get_or_create_system_category(
+                income_cat = self._get_or_create_system_category(
                     db, 'Покрытие из копилки', 'income', '#0ea5e9'
                 )
-                self._upsert_plan(db, cat.id, week_start, week_end, deficit)
+                expense_cat = self._get_or_create_system_category(
+                    db, 'В копилку', 'expense', '#8b5cf6'
+                )
+
+                # Две парные операции как ФАКТЫ
+                self._upsert_fact(db, income_cat.id,  week_start, week_end, deficit)
+                self._upsert_fact(db, expense_cat.id, week_start, week_end, deficit)
 
             elif strategy == 'credit_first':
                 repayment_mode   = data.get('repayment_mode', 'single')
@@ -545,7 +591,6 @@ class API:
                 )
 
                 if repayment_mode == 'single':
-                    # Единовременный возврат
                     if not return_date:
                         return {'success': False, 'error': 'Укажите дату возврата'}
 
@@ -569,7 +614,6 @@ class API:
                         ))
 
                 elif repayment_mode == 'parts':
-                    # Возврат по частям
                     if not parts_start_date or parts_count < 2:
                         return {'success': False, 'error': 'Укажите дату и количество выплат'}
 
@@ -580,7 +624,6 @@ class API:
                         if parts_period == 'weeks':
                             payment_date  = start + timedelta(weeks=i)
                         else:
-                            # Месяцы
                             month = start.month + i
                             year  = start.year + (month - 1) // 12
                             month = ((month - 1) % 12) + 1
@@ -619,28 +662,89 @@ class API:
             return {'success': False, 'error': str(e)}
         finally:
             db.close()
-    
-        # ── Отмена автозаполнения ─────────────────────────────────────────────────
-    def undo_autofill(self, data: dict) -> dict:
+        
+    def save_paired_saving(self, data: dict) -> dict:
         """
-        data = {
-            category_id:  int,
-            start_date:   'YYYY-MM-DD',
-            mode:         'weeks' | 'months',
-            count:        int,
-            day_of_month: int,
-        }
-        Удаляет все планы которые были созданы при автозаполнении
+        Автоматически создаёт парную операцию.
+        Если вводим факт в «Покрытие из копилки» → создаётся факт в «В копилку»
+        Если вводим факт в «В копилку» → создаётся факт в «Покрытие из копилки»
         """
         db = SessionLocal()
         try:
+            category_id     = int(data['category_id'])
+            week_start_date = data['week_start_date']
+            week_end_date   = data['week_end_date']
+            amount          = float(data['amount'])
+
+            if date.fromisoformat(week_end_date) < date.today():
+                return {'success': False, 'error': 'Нельзя добавлять факты в прошедшие недели'}
+
+            cat = db.query(Category).filter(
+                Category.id == category_id
+            ).first()
+            if not cat:
+                return {'success': False, 'error': 'Категория не найдена'}
+
+            # Определяем парную категорию
+            if cat.name == 'Покрытие из копилки':
+                paired_cat = self._get_or_create_system_category(
+                    db, 'В копилку', 'expense', '#8b5cf6'
+                )
+            elif cat.name == 'В копилку':
+                paired_cat = self._get_or_create_system_category(
+                    db, 'Покрытие из копилки', 'income', '#0ea5e9'
+                )
+            else:
+                return {'success': False, 'error': 'Не копилочная категория'}
+
+            # Сохраняем обе операции одновременно
+            self._upsert_fact(db, category_id, week_start_date, week_end_date, amount)
+            self._upsert_fact(db, paired_cat.id, week_start_date, week_end_date, amount)
+
+            db.commit()
+            return {'success': True}
+
+        except Exception as e:
+            db.rollback()
+            return {'success': False, 'error': str(e)}
+        finally:
+            db.close()
+
+        
+    
+    # ── Отмена автозаполнения ─────────────────────────────────────────────────
+    def undo_autofill(self, data: dict) -> dict:
+        db = SessionLocal()
+        try:
+            # Проверяем обязательные поля
+            if 'start_date' not in data:
+                return {'success': False, 'error': 'Не указана дата начала (start_date)'}
+            if 'category_id' not in data:
+                return {'success': False, 'error': 'Не указана категория (category_id)'}
+            if 'count' not in data:
+                return {'success': False, 'error': 'Не указано количество периодов (count)'}
+
+            # Отдельная валидация формата даты
+            try:
+                date.fromisoformat(data['start_date'])
+            except (ValueError, TypeError):
+                return {
+                    'success': False,
+                    'error':   f'Некорректный формат даты: «{data["start_date"]}». '
+                            f'Ожидается YYYY-MM-DD'
+                }
+
             category_id  = int(data['category_id'])
             start_date   = data['start_date']
             mode         = data.get('mode', 'weeks')
             count        = int(data['count'])
             day_of_month = int(data.get('day_of_month', 1))
 
-            # Генерируем тот же список дат что и при автозаполнении
+            if count <= 0:
+                return {'success': False, 'error': 'Количество должно быть > 0'}
+            if mode not in ('weeks', 'months'):
+                return {'success': False, 'error': f'Неизвестный режим: «{mode}»'}
+
             target_dates = []
 
             if mode == 'weeks':
@@ -697,18 +801,17 @@ class API:
     # ── Отмена возврата займа ─────────────────────────────────────────────────
     def undo_loan_repayment(self, data: dict) -> dict:
         """
-        data = {
-            week_start: 'YYYY-MM-DD',
-            week_end:   'YYYY-MM-DD',
-        }
-        Удаляет все планы по займам и возврату займов за указанный период
+        Удаляет план займа на указанной неделе и ОДИН ближайший
+        план возврата займа (первый после week_start).
+        
+        Почему только один: без loan_group_id мы не знаем какие именно
+        планы возврата относятся к этому конкретному займу.
+        Удалять все — значит затронуть чужие займы.
         """
         db = SessionLocal()
         try:
             week_start = data['week_start']
-            week_end   = data['week_end']
 
-            # Находим категории займа и возврата
             loan_cat = db.query(Category).filter(
                 Category.name == 'Займ'
             ).first()
@@ -719,30 +822,32 @@ class API:
 
             deleted_count = 0
 
-            # Удаляем план займа на неделе когда был дефицит
+            # Удаляем план займа строго на указанной неделе
             if loan_cat:
-                loan_plans = db.query(Plan).filter(
+                loan_plan = db.query(Plan).filter(
                     and_(
                         Plan.category_id     == loan_cat.id,
                         Plan.week_start_date == week_start,
                     )
-                ).all()
-                for lp in loan_plans:
-                    db.delete(lp)
+                ).first()  # .first() вместо .all() — займ на неделе один
+                
+                if loan_plan:
+                    db.delete(loan_plan)
                     deleted_count += 1
 
-            # Удаляем ВСЕ планы возврата для этого займа
-            # (они могут быть растянуты на несколько недель)
+            # Удаляем ОДИН ближайший план возврата после week_start
+            # Сортируем по дате и берём первый — это возврат данного займа
             if return_cat:
-                return_plans = db.query(Plan).filter(
-                    Plan.category_id == return_cat.id
-                ).all()
+                nearest_return = db.query(Plan).filter(
+                    and_(
+                        Plan.category_id     == return_cat.id,
+                        Plan.week_start_date >= week_start,  # после недели займа
+                    )
+                ).order_by(Plan.week_start_date.asc()).first()  # только ближайший
                 
-                # Фильтруем: оставляем только те которые идут после дефицита
-                for rp in return_plans:
-                    if rp.week_start_date >= week_start:
-                        db.delete(rp)
-                        deleted_count += 1
+                if nearest_return:
+                    db.delete(nearest_return)
+                    deleted_count += 1
 
             db.commit()
             return {'success': True, 'deleted': deleted_count}
@@ -771,6 +876,10 @@ class API:
             week_end   = data['week_end']
             diff       = actual - calculated
 
+            account = db.query(Account).first()
+            if not account:
+                return {'success': False, 'error': 'Счёт не создан'}
+
             if abs(diff) < 0.01:
                 return {'success': True, 'diff': 0, 'action': 'none'}
 
@@ -785,9 +894,9 @@ class API:
                         Fact.week_start_date == week_start,
                         Fact.external_id     == None,
                     )
-                ).delete()
+                ).delete(synchronize_session=False)
                 db.add(Fact(
-                    account_id      = db.query(Account).first().id,
+                    account_id      = account.id,
                     category_id     = cat.id,
                     week_start_date = week_start,
                     week_end_date   = week_end,
@@ -807,9 +916,9 @@ class API:
                         Fact.week_start_date == week_start,
                         Fact.external_id     == None,
                     )
-                ).delete()
+                ).delete(synchronize_session=False)
                 db.add(Fact(
-                    account_id      = db.query(Account).first().id,
+                    account_id      = account.id,
                     category_id     = cat.id,
                     week_start_date = week_start,
                     week_end_date   = week_end,
@@ -829,77 +938,88 @@ class API:
             db.close()
 
     def get_calculated_balance(self, week_start: str) -> dict:
-        """
-        Считает баланс нарастающим итогом
-        от начала периода ДО конца указанной недели (включительно).
-        """
         db = SessionLocal()
         try:
-            a       = db.query(Account).first()
-            balance = a.initial_balance if a else 0.0
+            # Проверка счёта
+            a = db.query(Account).first()
+            if not a:
+                return {'success': False, 'error': 'Счёт не создан'}
+            balance = a.initial_balance
 
+            # Проверка настроек и даты
             s = db.query(Settings).first()
-            if not s:
-                return {'success': False, 'error': 'Нет настроек'}
+            if not s or not s.planning_start_date:
+                return {'success': False, 'error': 'Нет даты начала планирования'}
 
             weeks = self._generate_weeks(s.planning_start_date)
+            if not weeks:
+                return {'success': False, 'error': 'Период не сгенерирован'}
 
-            cats        = db.query(Category).all()
+            # Ищем нужную неделю
+            target_weeks = []
+            found = False
+
+            for week in weeks:
+                target_weeks.append(week)
+                if week['week_start'] == week_start:
+                    found = True
+                    break
+
+            if not found:
+                return {'success': False, 'error': 'Неделя не найдена'}
+
+            last_week_start = target_weeks[-1]['week_start']
+
+            # Загружаем данные
+            all_facts = db.query(Fact).filter(
+                Fact.week_start_date <= last_week_start
+            ).all()
+
+            all_plans = db.query(Plan).filter(
+                Plan.week_start_date <= last_week_start
+            ).all()
+
+            # Индексы
+            facts_index = {}
+            for f in all_facts:
+                key = (f.category_id, f.week_start_date)
+                facts_index[key] = facts_index.get(key, 0) + f.amount
+
+            plans_index = {}
+            for p in all_plans:
+                key = (p.category_id, p.week_start_date)
+                plans_index[key] = p.amount
+
+            # Категории
+            cats = db.query(Category).all()
             income_ids  = {c.id for c in cats if c.type == 'income'}
             expense_ids = {c.id for c in cats if c.type == 'expense'}
 
-            for week in weeks:
+            # Расчёт
+            for week in target_weeks:
                 ws = week['week_start']
 
-                # Суммируем доходы
                 for cat_id in income_ids:
-                    fs = db.query(Fact).filter(
-                        and_(
-                            Fact.category_id     == cat_id,
-                            Fact.week_start_date == ws,
-                        )
-                    ).all()
-                    if fs:
-                        balance += sum(f.amount for f in fs)
-                    else:
-                        p = db.query(Plan).filter(
-                            and_(
-                                Plan.category_id     == cat_id,
-                                Plan.week_start_date == ws,
-                            )
-                        ).first()
-                        if p:
-                            balance += p.amount
+                    key = (cat_id, ws)
+                    if key in facts_index:
+                        balance += facts_index[key]
+                    elif key in plans_index:
+                        balance += plans_index[key]
 
-                # Суммируем расходы
                 for cat_id in expense_ids:
-                    fs = db.query(Fact).filter(
-                        and_(
-                            Fact.category_id     == cat_id,
-                            Fact.week_start_date == ws,
-                        )
-                    ).all()
-                    if fs:
-                        balance -= sum(f.amount for f in fs)
-                    else:
-                        p = db.query(Plan).filter(
-                            and_(
-                                Plan.category_id     == cat_id,
-                                Plan.week_start_date == ws,
-                            )
-                        ).first()
-                        if p:
-                            balance -= p.amount
-
-                # Останавливаемся на выбранной неделе
-                if ws == week_start:
-                    break
+                    key = (cat_id, ws)
+                    if key in facts_index:
+                        balance -= facts_index[key]
+                    elif key in plans_index:
+                        balance -= plans_index[key]
 
             return {'success': True, 'balance': round(balance, 2)}
+
         except Exception as e:
             return {'success': False, 'error': str(e)}
         finally:
             db.close()
+
 
     # ── Экспорт / Импорт ──────────────────────────────────────────────────────
     def export_data(self) -> dict:
@@ -1083,6 +1203,8 @@ class API:
 
     def _generate_weeks(self, start_str: str) -> list:
         """52 недели вперёд от start_str (приводим к понедельнику)"""
+        if not start_str:
+            return []
         MONTHS_RU = {
             1:'янв', 2:'фев', 3:'мар', 4:'апр',
             5:'май', 6:'июн', 7:'июл', 8:'авг',
@@ -1137,7 +1259,6 @@ class API:
                 return {'success': False, 'error': 'Window not found'}
 
             # Получаем текущий стиль окна
-            WS_CAPTION = 0x00C00000
             WS_THICKFRAME = 0x00040000
             
             style = ctypes.windll.user32.GetWindowLongW(hwnd, -16)  # GWL_STYLE
@@ -1157,8 +1278,37 @@ class API:
             return {'success': False, 'error': str(e)}
 
     def _get_hwnd(self):
-        """Получаем handle нативного окна по заголовку"""
-        return ctypes.windll.user32.FindWindowW(None, 'Cash Flow')
+        """
+        Возвращает HWND окна. 
+        Сначала пробует через pywebview (надёжно),
+        при неудаче — ищет по заголовку (fallback).
+        Кидает RuntimeError если окно не найдено.
+        """
+        if self._hwnd:
+            return self._hwnd
+
+        # Способ 1: получаем хэндл напрямую через pywebview
+        # window.native — это dict {'hwnd': int} на Windows
+        try:
+            if self._window and hasattr(self._window, 'native'):
+                native = self._window.native
+                if isinstance(native, dict) and 'hwnd' in native:
+                    self._hwnd = native['hwnd']
+                    return self._hwnd
+        except Exception:
+            pass
+
+        #  Способ 2: fallback — поиск по заголовку
+        hwnd = ctypes.windll.user32.FindWindowW(None, WINDOW_TITLE)
+        if not hwnd:
+            raise RuntimeError(
+                f'Окно «{WINDOW_TITLE}» не найдено. '
+                f'Убедитесь что заголовок окна совпадает с константой WINDOW_TITLE.'
+            )
+
+        self._hwnd = hwnd
+        return self._hwnd
+
 
     def startup_maximize(self) -> dict:
         """Вызывается при старте — разворачивает окно как maximize (уважает taskbar)"""
@@ -1229,6 +1379,8 @@ class API:
         db = SessionLocal()
         try:
             a = db.query(Account).first()
+            if not a:
+                return {'success': False, 'error': 'Счёт не создан'}
             return {'success': True, 'name': a.name if a else ''}
         except Exception as e:
             return {'success': False, 'error': str(e)}

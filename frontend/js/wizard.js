@@ -94,6 +94,29 @@ function getMondayISO(dateStr) {
   return `${year}-${month}-${date}`;
 }
 
+async function handleToggleMaximize() {
+  try {
+    const result = await pywebview.api.toggle_maximize();
+    
+    const btn = document.getElementById('btn-maximize');
+    if (!btn) return;
+
+    const isMax = result?.maximized;
+
+    btn.innerHTML = isMax
+      ? `<svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1">
+           <rect x="2" y="0" width="8" height="8"/>
+           <path d="M0 2v8h8" fill="none"/>
+         </svg>`
+      : `<svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1">
+           <rect x="0.5" y="0.5" width="9" height="9"/>
+         </svg>`;
+
+  } catch (e) {
+    console.error('Ошибка toggle_maximize:', e);
+  }
+}
+
 // ══════════════════════════════════════════════════════════════
 // ОБНОВЛЕНИЕ UI
 // ══════════════════════════════════════════════════════════════
