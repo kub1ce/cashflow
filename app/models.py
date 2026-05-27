@@ -30,6 +30,7 @@ class Plan(Base):
     week_end_date   = Column(String, nullable=False)
     amount          = Column(Float, nullable=False, default=0.0)
     comment         = Column(Text, nullable=True)
+    loan_id         = Column(Integer, nullable=True)
 
 
 class Fact(Base):
@@ -44,6 +45,7 @@ class Fact(Base):
     date            = Column(String, nullable=True)
     comment         = Column(Text, nullable=True)
     external_id     = Column(String, nullable=True, unique=True)
+    loan_id         = Column(Integer, nullable=True)
 
     __table_args__ = (
         UniqueConstraint('external_id', name='uq_facts_external_id'),

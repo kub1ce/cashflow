@@ -616,7 +616,6 @@ class API:
                                 fact_date=week_start)
 
             else:  # strategy == 'credit_first'
-                # ── Стратегия 2: Займ с возвратом ──
                 repayment_mode   = data.get('repayment_mode', 'single')
                 parts_count      = int(data.get('parts_count', 1))
                 parts_period     = data.get('parts_period', 'weeks')
@@ -626,7 +625,30 @@ class API:
                 loan_cat = self._get_or_create_system_category(
                     db, 'Займ', 'income', '#f59e0b'
                 )
-                self._upsert_plan(db, loan_cat.id, week_start, week_end, deficit)
+                
+                # Сохраняем займ и запоминаем его ID для связи
+                loan_plan = None
+                existing_loan = db.query(Plan).filter(
+                    and_(
+                        Plan.category_id     == loan_cat.id,
+                        Plan.week_start_date == week_start,
+                    )
+                ).first()
+                
+                if existing_loan:
+                    existing_loan.amount += data['deficit']
+                    loan_plan = existing_loan
+                else:
+                    loan_plan = Plan(
+                        category_id     = loan_cat.id,
+                        week_start_date = week_start,
+                        week_end_date   = week_end,
+                        amount          = data['deficit'],
+                    )
+                    db.add(loan_plan)
+                    db.flush()  # ← Получаем ID займа
+                
+                loan_id = loan_plan.id  # ← КЛЮЧЕВАЯ СТРОКА
 
                 # Категория возврата
                 return_cat = self._get_or_create_system_category(
@@ -647,20 +669,24 @@ class API:
                         )
                     ).first()
                     if existing:
-                        existing.amount += deficit
+                        existing.amount += data['deficit']
+                        # ← ДОБАВИТЬ: устанавливаем loan_id для существующей записи
+                        if not existing.loan_id:
+                            existing.loan_id = loan_id
                     else:
                         db.add(Plan(
                             category_id     = return_cat.id,
                             week_start_date = return_monday.isoformat(),
                             week_end_date   = return_sunday.isoformat(),
-                            amount          = deficit,
+                            amount          = data['deficit'],
+                            loan_id         = loan_id,  # ← СВЯЗЫВАЕМ С ЗАЙМОМ
                         ))
 
                 elif repayment_mode == 'parts':
                     if not parts_start_date or parts_count < 2:
                         return {'success': False, 'error': 'Укажите дату и количество выплат'}
 
-                    per_payment = deficit / parts_count
+                    per_payment = data['deficit'] / parts_count
                     start       = date.fromisoformat(parts_start_date)
 
                     for i in range(parts_count):
@@ -685,16 +711,21 @@ class API:
                         ).first()
                         if existing:
                             existing.amount += per_payment
+                            # ← ДОБАВИТЬ: устанавливаем loan_id для существующей записи
+                            if not existing.loan_id:
+                                existing.loan_id = loan_id
                         else:
                             db.add(Plan(
                                 category_id     = return_cat.id,
                                 week_start_date = payment_monday.isoformat(),
                                 week_end_date   = payment_sunday.isoformat(),
                                 amount          = per_payment,
+                                loan_id         = loan_id,  # ← СВЯЗЫВАЕМ С ЗАЙМОМ
                             ))
 
             db.commit()
             return {'success': True}
+        
         except Exception as e:
             db.rollback()
             return {'success': False, 'error': str(e)}
@@ -845,7 +876,8 @@ class API:
     # ── Отмена возврата займа ─────────────────────────────────────────────────
     def undo_loan_repayment(self, data: dict) -> dict:
         """
-        Удаляет займ и возвраты займа ТОЛЬКО на указанной неделе.
+        Удаляет займ на указанной неделе и ВСЕ возвраты, 
+        связанные с этим конкретным займом (по loan_id).
         """
         db = SessionLocal()
         try:
@@ -854,7 +886,6 @@ class API:
 
             week_start = data['week_start']
 
-            # Валидация формата даты
             try:
                 date.fromisoformat(week_start)
             except (ValueError, TypeError):
@@ -869,8 +900,9 @@ class API:
             ).first()
 
             deleted_count = 0
+            loan_id = None
 
-            # ── Удаляем планы и факты ЗАЙМА на указанной неделе ──
+            # ── Удаляем займ и получаем его ID ──
             if loan_cat:
                 loan_plans = db.query(Plan).filter(
                     and_(
@@ -878,7 +910,9 @@ class API:
                         Plan.week_start_date == week_start,
                     )
                 ).all()
+                
                 for plan in loan_plans:
+                    loan_id = plan.id  # ← Запоминаем ID займа
                     db.delete(plan)
                     deleted_count += 1
 
@@ -888,28 +922,33 @@ class API:
                         Fact.week_start_date == week_start,
                     )
                 ).all()
+                
                 for fact in loan_facts:
                     db.delete(fact)
                     deleted_count += 1
 
-            # ── Удаляем планы и факты ВОЗВРАТА на указанной неделе ──
-            if return_cat:
+            # ── Удаляем ТОЛЬКО возвраты, связанные с этим займом ──
+            if return_cat and loan_id:
+                # Удаляем планы возврата по loan_id
                 return_plans = db.query(Plan).filter(
                     and_(
-                        Plan.category_id     == return_cat.id,
-                        Plan.week_start_date == week_start,
+                        Plan.category_id == return_cat.id,
+                        Plan.loan_id     == loan_id,  # ← КЛЮЧЕВАЯ СТРОКА
                     )
                 ).all()
+                
                 for plan in return_plans:
                     db.delete(plan)
                     deleted_count += 1
 
+                # Удаляем факты возврата по loan_id
                 return_facts = db.query(Fact).filter(
                     and_(
-                        Fact.category_id     == return_cat.id,
-                        Fact.week_start_date == week_start,
+                        Fact.category_id == return_cat.id,
+                        Fact.loan_id     == loan_id,  # ← КЛЮЧЕВАЯ СТРОКА
                     )
                 ).all()
+                
                 for fact in return_facts:
                     db.delete(fact)
                     deleted_count += 1
