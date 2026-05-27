@@ -424,27 +424,45 @@ async function initWindowResize() {
 // ТЁМНАЯ ТЕМА (Wizard)
 // ══════════════════════════════════════════════════════════════
 
-function toggleTheme() {
-  const isDark = !document.documentElement.classList.contains('dark');
-
-  document.documentElement.classList.toggle('dark', isDark);
+function applyTheme(isDark) {
   document.body.classList.toggle('dark', isDark);
-
-  localStorage.setItem(
-    'cashflow-theme',
-    isDark ? 'dark' : 'light'
-  );
+  document.documentElement.classList.toggle('dark', isDark);
 
   const sun  = document.getElementById('theme-icon-sun');
   const moon = document.getElementById('theme-icon-moon');
 
   if (isDark) {
-    sun?.classList.add('hidden');
-    moon?.classList.remove('hidden');
+    if (sun) sun.classList.add('hidden');
+    if (moon) moon.classList.remove('hidden');
+    const btn = document.getElementById('btn-theme');
+    if (btn) btn.title = 'Светлая тема';
   } else {
-    sun?.classList.remove('hidden');
-    moon?.classList.add('hidden');
+    if (sun) sun.classList.remove('hidden');
+    if (moon) moon.classList.add('hidden');
+    const btn = document.getElementById('btn-theme');
+    if (btn) btn.title = 'Тёмная тема';
   }
+}
+
+async function toggleTheme() {
+  const isDark = !document.body.classList.contains('dark');
+
+  // 1. Включаем CSS-транзишены
+  document.body.classList.add('theme-transitioning');
+  
+  // Форсируем перерисовку
+  void document.body.offsetWidth;
+
+  // 2. Переключаем тему
+  applyTheme(isDark);
+
+  // 3. Выключаем транзишены после завершения (300ms)
+  setTimeout(() => {
+    document.body.classList.remove('theme-transitioning');
+  }, 300);
+
+  // 4. Сохраняем в localStorage
+  localStorage.setItem('cashflow-theme', isDark ? 'dark' : 'light');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -473,13 +491,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     applyTheme(prefersDark);
   }
 
-  const btn = document.getElementById('btn-theme');
-  if (btn) {
-    btn.textContent =
-      document.body.classList.contains('dark')
-        ? '☀️'
-        : '🌙';
-  }
+  // НЕ ТРОГАЕМ ТЕКСТ КНОПКИ! Иконки должны быть SVG, а не эмодзи
 
   // Устанавливаем понедельник текущей недели
   const today = new Date();
@@ -494,7 +506,6 @@ document.addEventListener('DOMContentLoaded', async function() {
   document.getElementById('period-start').value =
     `${year}-${month}-${dayNum}`;
 
-    
   // Показываем первый шаг
   updateUI(1);
 });

@@ -66,18 +66,26 @@
   
   .cat-card {
     transition:
-      background-color var(--anim-fast) var(--ease-in-out),
-      box-shadow       var(--anim-fast) var(--ease-in-out),
-      border-color     var(--anim-fast) var(--ease-in-out),
-      transform        var(--anim-fast) var(--ease-spring);
+      transform var(--anim-fast) var(--ease-spring),
+      background-color 0.3s ease,
+      border-color 0.3s ease,
+      box-shadow 0.3s ease;
   }
   
-  .cat-card:hover {
-    transform: translateY(-2px);
+  .strategy-card {
+    transition:
+      transform var(--anim-normal) var(--ease-spring),
+      background-color 0.3s ease,
+      border-color 0.3s ease,
+      box-shadow 0.3s ease;
   }
   
-  .cat-card.selected {
-    transform: scale(1.02);
+  input[type="text"], input[type="date"], input[type="number"], select {
+    transition:
+      border-color var(--anim-fast) var(--ease-in-out),
+      box-shadow var(--anim-fast) var(--ease-in-out),
+      background-color 0.3s ease,
+      color 0.3s ease;
   }
   
   /* ══════════════════════════════════════════════════════════════
@@ -220,12 +228,7 @@
       box-shadow   var(--anim-fast) var(--ease-in-out),
       background-color var(--anim-fast) var(--ease-in-out);
   }
-  
-  input:focus,
-  select:focus {
-    transform: scale(1.01);
-  }
-  
+
   /* ══════════════════════════════════════════════════════════════
      REDUCE MOTION
      ══════════════════════════════════════════════════════════════ */
@@ -238,23 +241,4 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
-  }
-
-  /* ══════════════════════════════════════════════════════════════
-   Плавное переключение темы (Wizard)
-   ══════════════════════════════════════════════════════════════ */
-
-  body,
-  body .wizard-container,
-  body .strategy-card,
-  body .cat-card,
-  body header,
-  body footer,
-  body input,
-  body textarea,
-  body select {
-    transition:
-      background-color 0.3s ease,
-      color 0.3s ease,
-      border-color 0.3s ease;
   }

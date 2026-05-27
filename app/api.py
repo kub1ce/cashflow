@@ -3,6 +3,7 @@ import ctypes
 import ctypes.wintypes
 import json
 from datetime import date, timedelta
+import calendar
 
 from sqlalchemy import and_
 from sqlalchemy import text
@@ -322,60 +323,49 @@ class API:
             if not s or not s.planning_start_date:
                 return {'error': 'no_settings'}
 
-            # Проверяем счёт сразу — это аномалия, не норма
             a = db.query(Account).first()
             if not a:
                 return {'error': 'no_account'}
 
-            weeks = self._generate_weeks(s.planning_start_date)
-
-            cats = db.query(Category).order_by(Category.sort_order).all()
+            weeks      = self._generate_weeks(s.planning_start_date)
+            cats       = db.query(Category).order_by(Category.sort_order).all()
             categories = [self._cat_to_dict(c) for c in cats]
 
             plans_raw = db.query(Plan).all()
             facts_raw = db.query(Fact).all()
 
-            plans = {}
-            facts = {}
-            comments = {}
+            plans    = {}
+            facts    = {}
+            comments = {}  # <-- СОЗДАЕМ ЕДИНЫЙ СЛОВАРЬ ДЛЯ КОММЕНТАРИЕВ
 
-            # ── Plans ─────────────────────────────
             for p in plans_raw:
                 key = f"{p.category_id}:{p.week_start_date}"
-                plans[key] = {
-                    'id': p.id,
-                    'amount': p.amount,
-                }
-
+                plans[key] = {'id': p.id, 'amount': p.amount}
                 if p.comment:
-                    comments[key] = p.comment
+                    comments[key] = p.comment  # <-- Записываем сюда
 
-            # ── Facts ─────────────────────────────
             for f in facts_raw:
                 key = f"{f.category_id}:{f.week_start_date}"
-
                 if key not in facts:
                     facts[key] = []
-
                 facts[key].append({
                     'id':      f.id,
                     'amount':  f.amount,
                     'date':    f.date,
                     'comment': f.comment,
                 })
-
                 if f.comment:
-                    comments[key] = f.comment
+                    comments[key] = f.comment  # <-- И факты тоже записываем сюда
 
             vc = json.loads(s.visual_config or '{}')
 
             return {
-                'weeks':           weeks,
-                'categories':      categories,
-                'plans':           plans,
-                'facts':           facts,
-                'comments':        comments,
-                'initial_balance': a.initial_balance,  # a точно не None
+                'weeks':          weeks,
+                'categories':     categories,
+                'plans':          plans,
+                'facts':          facts,
+                'comments':       comments,        # <-- ОТДАЕМ JS ИМЕННО ПОД ЭТИМ ИМЕНЕМ
+                'initial_balance': a.initial_balance,
                 'settings': {
                     'financial_strategy':  s.financial_strategy,
                     'planning_start_date': s.planning_start_date,
@@ -393,6 +383,17 @@ class API:
             amount, mode: 'plan'|'fact'
         }
         """
+        required = ['category_id', 'week_start_date', 'week_end_date']
+        for field in required:
+            if field not in data:
+                return {'success': False, 'error': f'Отсутствует поле: {field}'}
+        
+        try:
+            date.fromisoformat(data['week_start_date'])
+            date.fromisoformat(data['week_end_date'])
+        except (ValueError, TypeError) as e:
+            return {'success': False, 'error': f'Некорректный формат даты: {e}'}
+        
         db = SessionLocal()
         try:
             category_id     = int(data['category_id'])
@@ -436,7 +437,11 @@ class API:
                     amount          = amount,
                 ))
 
-    def _upsert_fact(self, db, category_id, week_start_date, week_end_date, amount):
+    def _upsert_fact(self, db, category_id, week_start_date, week_end_date,
+                 amount, fact_date=None):
+        # Вычисляем дату один раз в начале — больше не переопределяем
+        record_date = fact_date or date.today().isoformat()
+
         existing = db.query(Fact).filter(
             and_(
                 Fact.category_id     == category_id,
@@ -444,34 +449,37 @@ class API:
                 Fact.external_id     == None,
             )
         ).first()
+
         a = db.query(Account).first()
         if not a:
             raise RuntimeError('Счёт не создан')
-        account_id = a.id
 
         if amount == 0:
             if existing:
                 db.delete(existing)
         else:
-            today = date.today().isoformat()
             if existing:
                 existing.amount        = amount
                 existing.week_end_date = week_end_date
-                existing.date          = today
+                existing.date          = record_date   # ← используем record_date
             else:
                 db.add(Fact(
-                    account_id      = account_id,
+                    account_id      = a.id,
                     category_id     = category_id,
                     week_start_date = week_start_date,
                     week_end_date   = week_end_date,
                     amount          = amount,
-                    date            = today,
+                    date            = record_date,     # ← используем record_date
                     comment         = None,
                     external_id     = None,
                 ))
 
+    def _last_day_of_month(self, year: int, month: int) -> int:
+        return calendar.monthrange(year, month)[1]
+    
     # ── Автозаполнение ────────────────────────────────────────────────────────
     def autofill(self, data: dict) -> dict:
+        
         db = SessionLocal()
         try:
             #  Валидация обязательных полей перед использованием
@@ -516,23 +524,19 @@ class API:
                     target_dates.append(week_start + timedelta(weeks=i))
 
             elif mode == 'months':
-                start = date.fromisoformat(start_date)     #  безопасно
+                start = date.fromisoformat(start_date)   # ← инициализация
                 year  = start.year
                 month = start.month
 
                 for i in range(count):
-                    if month == 12:
-                        last_day = 31
-                    else:
-                        last_day = (date(year, month + 1, 1) - timedelta(days=1)).day
-
+                    last_day   = self._last_day_of_month(year, month)
                     actual_day = min(day_of_month, last_day)
                     target_dates.append(date(year, month, actual_day))
 
                     month += 1
                     if month > 12:
                         month = 1
-                        year  += 1
+                        year += 1
 
             week_amounts: dict = {}
             for target_date in target_dates:
@@ -570,15 +574,34 @@ class API:
 
     # ── Кассовый разрыв ───────────────────────────────────────────────────────
     def handle_deficit(self, data: dict) -> dict:
+        required = ['week_start', 'week_end', 'deficit', 'strategy']
+        for field in required:
+            if field not in data:
+                return {'success': False, 'error': f'Отсутствует поле: {field}'}
+
+        try:
+            date.fromisoformat(data['week_start'])
+            date.fromisoformat(data['week_end'])
+        except (ValueError, TypeError) as e:
+            return {'success': False, 'error': f'Некорректный формат даты: {e}'}
+
+        deficit = float(data['deficit'])
+        if deficit <= 0:
+            return {'success': False, 'error': 'Дефицит должен быть > 0'}
+
+        strategy = data['strategy']
+        if strategy not in ('saving_first', 'credit_first'):
+            return {'success': False, 'error': f'Неизвестная стратегия: {strategy}'}
+
+        # ── Работа с БД ──
         db = SessionLocal()
         try:
             week_start  = data['week_start']
             week_end    = data['week_end']
-            deficit     = float(data['deficit'])
-            strategy    = data['strategy']
             return_date = data.get('return_date')
 
             if strategy == 'saving_first':
+                # ── Стратегия 1: Покрытие из копилки ──
                 income_cat = self._get_or_create_system_category(
                     db, 'Покрытие из копилки', 'income', '#0ea5e9'
                 )
@@ -587,12 +610,14 @@ class API:
                 )
 
                 # Две парные операции как ФАКТЫ
-                self._upsert_fact(db, income_cat.id,  week_start, week_end, deficit)
-                self._upsert_fact(db, expense_cat.id, week_start, week_end, deficit)
+                self._upsert_fact(db, income_cat.id,  week_start, week_end, deficit,
+                fact_date=week_start)
+                self._upsert_fact(db, expense_cat.id, week_start, week_end, deficit,
+                                fact_date=week_start)
 
-            elif strategy == 'credit_first':
+            else:  # strategy == 'credit_first'
+                # ── Стратегия 2: Займ с возвратом ──
                 repayment_mode   = data.get('repayment_mode', 'single')
-                return_date      = data.get('return_date')
                 parts_count      = int(data.get('parts_count', 1))
                 parts_period     = data.get('parts_period', 'weeks')
                 parts_start_date = data.get('parts_start_date')
@@ -645,10 +670,7 @@ class API:
                             month = start.month + i
                             year  = start.year + (month - 1) // 12
                             month = ((month - 1) % 12) + 1
-                            if month == 12:
-                                last_day = 31
-                            else:
-                                last_day = (date(year, month + 1, 1) - timedelta(days=1)).day
+                            last_day     = self._last_day_of_month(year, month)
                             actual_day   = min(start.day, last_day)
                             payment_date = date(year, month, actual_day)
 
@@ -670,8 +692,6 @@ class API:
                                 week_end_date   = payment_sunday.isoformat(),
                                 amount          = per_payment,
                             ))
-            else:
-                return {'success': False, 'error': 'Неизвестная стратегия'}
 
             db.commit()
             return {'success': True}
@@ -682,17 +702,27 @@ class API:
             db.close()
         
     def save_paired_saving(self, data: dict) -> dict:
-        """
-        Автоматически создаёт парную операцию.
-        Если вводим факт в «Покрытие из копилки» → создаётся факт в «В копилку»
-        Если вводим факт в «В копилку» → создаётся факт в «Покрытие из копилки»
-        """
+        required = ['category_id', 'week_start_date', 'week_end_date', 'amount']
+        for field in required:
+            if field not in data:
+                return {'success': False, 'error': f'Отсутствует поле: {field}'}
+
+        try:
+            date.fromisoformat(data['week_start_date'])
+            date.fromisoformat(data['week_end_date'])
+        except (ValueError, TypeError) as e:
+            return {'success': False, 'error': f'Некорректный формат даты: {e}'}
+
+        amount = float(data['amount'])
+        if amount <= 0:
+            return {'success': False, 'error': 'Сумма должна быть > 0'}
+
+        # ── Работа с БД ──
         db = SessionLocal()
         try:
             category_id     = int(data['category_id'])
             week_start_date = data['week_start_date']
             week_end_date   = data['week_end_date']
-            amount          = float(data['amount'])
 
             if date.fromisoformat(week_end_date) < date.today():
                 return {'success': False, 'error': 'Нельзя добавлять факты в прошедшие недели'}
@@ -776,18 +806,14 @@ class API:
                 month = start.month
 
                 for i in range(count):
-                    if month == 12:
-                        last_day = 31
-                    else:
-                        last_day = (date(year, month + 1, 1) - timedelta(days=1)).day
-
+                    last_day   = self._last_day_of_month(year, month)   # ← всегда
                     actual_day = min(day_of_month, last_day)
                     target_dates.append(date(year, month, actual_day))
 
                     month += 1
                     if month > 12:
                         month = 1
-                        year  += 1
+                        year += 1
 
             # Находим уникальные недели и удаляем планы
             week_starts = set()
@@ -819,11 +845,20 @@ class API:
     # ── Отмена возврата займа ─────────────────────────────────────────────────
     def undo_loan_repayment(self, data: dict) -> dict:
         """
-        Полностью удаляет займ и все связанные с ним возвраты (факты и планы).
+        Удаляет займ и возвраты займа ТОЛЬКО на указанной неделе.
         """
         db = SessionLocal()
         try:
+            if 'week_start' not in data:
+                return {'success': False, 'error': 'Не указана неделя (week_start)'}
+
             week_start = data['week_start']
+
+            # Валидация формата даты
+            try:
+                date.fromisoformat(week_start)
+            except (ValueError, TypeError):
+                return {'success': False, 'error': f'Некорректный формат даты: {week_start}'}
 
             loan_cat = db.query(Category).filter(
                 Category.name == 'Займ'
@@ -835,9 +870,8 @@ class API:
 
             deleted_count = 0
 
-            # ── Удаляем ВСЕ планы и факты займа на указанной неделе ──
+            # ── Удаляем планы и факты ЗАЙМА на указанной неделе ──
             if loan_cat:
-                # Удаляем планы
                 loan_plans = db.query(Plan).filter(
                     and_(
                         Plan.category_id     == loan_cat.id,
@@ -847,8 +881,7 @@ class API:
                 for plan in loan_plans:
                     db.delete(plan)
                     deleted_count += 1
-                
-                # Удаляем факты
+
                 loan_facts = db.query(Fact).filter(
                     and_(
                         Fact.category_id     == loan_cat.id,
@@ -859,25 +892,22 @@ class API:
                     db.delete(fact)
                     deleted_count += 1
 
-            # ── Удаляем ВСЕ планы и факты возврата займа после недели займа ──
-            # Ищем все возвраты которые начинаются с недели займа и позже
+            # ── Удаляем планы и факты ВОЗВРАТА на указанной неделе ──
             if return_cat:
-                # Удаляем все планы возврата от этой недели вперёд
                 return_plans = db.query(Plan).filter(
                     and_(
                         Plan.category_id     == return_cat.id,
-                        Plan.week_start_date >= week_start,  # от недели займа и позже
+                        Plan.week_start_date == week_start,
                     )
                 ).all()
                 for plan in return_plans:
                     db.delete(plan)
                     deleted_count += 1
-                
-                # Удаляем все факты возврата от этой недели вперёд
+
                 return_facts = db.query(Fact).filter(
                     and_(
                         Fact.category_id     == return_cat.id,
-                        Fact.week_start_date >= week_start,  # от недели займа и позже
+                        Fact.week_start_date == week_start,
                     )
                 ).all()
                 for fact in return_facts:
@@ -895,21 +925,29 @@ class API:
 
     # ── Сверка баланса ────────────────────────────────────────────────────────
     def reconcile_balance(self, data: dict) -> dict:
-        """
-        data = {
-            actual_balance:      float,
-            calculated_balance:  float,
-            week_start:          str,
-            week_end:            str,
-        }
-        """
-        db = SessionLocal()
+        required = ['actual_balance', 'calculated_balance', 'week_start', 'week_end']
+        for field in required:
+            if field not in data:
+                return {'success': False, 'error': f'Отсутствует поле: {field}'}
+
+        try:
+            date.fromisoformat(data['week_start'])
+            date.fromisoformat(data['week_end'])
+        except (ValueError, TypeError) as e:
+            return {'success': False, 'error': f'Некорректный формат даты: {e}'}
+
         try:
             actual     = float(data['actual_balance'])
             calculated = float(data['calculated_balance'])
-            week_start = data['week_start']
-            week_end   = data['week_end']
-            diff       = actual - calculated
+        except (ValueError, TypeError):
+            return {'success': False, 'error': 'actual_balance и calculated_balance должны быть числами'}
+
+        # ── Работа с БД ──
+        db = SessionLocal()
+        try:
+            week_start = data['week_start']     # используем, не вычисляем
+            week_end   = data['week_end']       # используем, не вычисляем
+            diff       = actual - calculated    # используем уже вычисленные значения
 
             account = db.query(Account).first()
             if not account:
@@ -1124,6 +1162,13 @@ class API:
         """Полностью заменяет данные БД из импортированного словаря (кроме planning_start_date)"""
         db = SessionLocal()
         try:
+            # Если data — это строка (JSON), парсим её
+            if isinstance(data, str):
+                try:
+                    data = json.loads(data)
+                except json.JSONDecodeError:
+                    return {'success': False, 'error': 'Невалидный JSON'}
+
             # Сохраняем текущую дату начала периода
             current_settings = db.query(Settings).first()
             current_start_date = current_settings.planning_start_date if current_settings else None
@@ -1137,7 +1182,6 @@ class API:
 
             s = data.get('settings', {})
             db.add(Settings(
-                # СОХРАНЯЕМ СТАРУЮ ДАТУ (или берём из импорта если её нет)
                 planning_start_date = current_start_date or s.get('planning_start_date'),
                 financial_strategy  = s.get('financial_strategy', 'manual'),
                 visual_config       = json.dumps(s.get('visual_config', {})),
@@ -1426,16 +1470,27 @@ class API:
 
     # ── Сохранение комментария ─────────────────────────────
     def save_cell_comment(self, data: dict) -> dict:
+        required = ['category_id', 'week_start_date']
+        for field in required:
+            if field not in data:
+                return {'success': False, 'error': f'Отсутствует поле: {field}'}
+
+        try:
+            date.fromisoformat(data['week_start_date'])
+        except (ValueError, TypeError) as e:
+            return {'success': False, 'error': f'Некорректный формат даты: {e}'}
+
+        try:
+            int(data['category_id'])  # проверяем валидность до открытия БД
+        except (ValueError, TypeError):
+            return {'success': False, 'error': 'category_id должно быть целым числом'}
+
         db = SessionLocal()
         try:
             category_id     = int(data['category_id'])
             week_start_date = data['week_start_date']
-            week_end_date   = data.get('week_end_date')
             comment         = data.get('comment')
-
-            print("SAVE COMMENT DATA:", data)
-
-            # Ищем факт
+            
             obj = db.query(Fact).filter(
                 and_(
                     Fact.category_id     == category_id,
@@ -1454,25 +1509,16 @@ class API:
 
             if obj:
                 obj.comment = comment
+                db.commit()
+                return {'success': True}
             else:
-                print("CREATING NEW PLAN FOR COMMENT")
-                new_plan = Plan(
-                    category_id     = category_id,
-                    week_start_date = week_start_date,
-                    week_end_date   = week_end_date,
-                    amount          = 0,
-                    comment         = comment
-                )
-                db.add(new_plan)
-
-            db.commit()
-            print("COMMENT SAVED OK")
-            return {'success': True}
+                return {
+                    'success': False, 
+                    'error': 'Нет записи для комментария. Сначала введите сумму.'
+                }
 
         except Exception as e:
-            print("SAVE COMMENT ERROR:", str(e))
             db.rollback()
             return {'success': False, 'error': str(e)}
-
         finally:
             db.close()

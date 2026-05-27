@@ -807,8 +807,6 @@ input[type=number]::-webkit-outer-spin-button {
   ══════════════════════════════════════════════════════════════ */
 
 #emoji-picker-panel {
-  position: absolute;
-  z-index: 50;
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
@@ -1428,13 +1426,6 @@ body.dark .balance-data-cell:hover {
 .th-sticky,
 .td-sticky {
   border-left: 1px solid #94a3b8 !important;
-  /* background-clip лечит баг WebKit с просвечиванием фона под рамкой */
-  background-clip: padding-box !important;
-}
-
-/* 2. Принудительно рисуем праву границу ПРЯМО НА закрепленных ячейках */
-.th-sticky,
-.td-sticky {
   border-right: 1px solid #94a3b8 !important;
   /* background-clip лечит баг WebKit с просвечиванием фона под рамкой */
   background-clip: padding-box !important;
@@ -1467,25 +1458,6 @@ body.dark .row-section .section-label {
 /* ══════════════════════════════════════════════════════════════
    ДОПОЛНЕНИЯ
    ══════════════════════════════════════════════════════════════ */
-
-/* 1. Убираем резкую белую рамку у выбора цветов в настройках (Dark Theme) */
-body.dark input[type="color"] {
-  border: 1px solid #334155 !important;
-  background-color: #1e293b !important;
-  border-radius: 4px;
-  padding: 2px;
-  cursor: pointer;
-  height: 36px; /* Чтобы выглядели аккуратно в один ряд */
-}
-
-body.dark input[type="color"]::-webkit-color-swatch-wrapper {
-  padding: 0;
-}
-
-body.dark input[type="color"]::-webkit-color-swatch {
-  border: 1px solid #0f172a; /* Темная обводка самого квадратика цвета */
-  border-radius: 2px;
-}
 
 /* 2. Делаем кнопки "СОХРАНИТЬ" и "ДОБАВИТЬ" более видимыми в тёмной теме */
 
@@ -1810,29 +1782,36 @@ body.dark .error-banner {
   color: #fca5a5;
 }
 
-/* Темная тема — нормальный вид color picker */
-body.dark input[type="color"] {
-  background: #1e293b !important;
-  border: 1px solid #334155 !important;
-  padding: 0;
-  height: 40px;
-}
-
-/* Убираем белую рамку Safari */
-body.dark input[type="color"]::-webkit-color-swatch-wrapper {
-  padding: 0;
-  background: transparent;
-}
-
-body.dark input[type="color"]::-webkit-color-swatch {
-  border: 2px solid #0f172a;
-  border-radius: 4px;
-}
-
 .total-income-value {
   color: #16a34a !important;
 }
 
 .total-expense-value {
   color: #ef4444 !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   COLOR PICKERS (Единый стиль для светлой и тёмной темы)
+   ══════════════════════════════════════════════════════════════ */
+input[type="color"] {
+  padding: 0; 
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 2px; /* Одинаковый внутренний отступ для обеих тем */
+}
+
+input[type="color"]::-webkit-color-swatch {
+  border: 1px solid #cbd5e1; /* Рамка самого цвета в светлой теме */
+  border-radius: 4px;
+}
+
+/* Перекрашиваем только цвета в тёмной теме (размеры остаются те же!) */
+body.dark input[type="color"] {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+body.dark input[type="color"]::-webkit-color-swatch {
+  border-color: #0f172a; /* Рамка самого цвета в тёмной теме */
 }

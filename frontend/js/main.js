@@ -82,11 +82,28 @@ function isPastWeek(weekStart, weekEnd) {
 function evalAmount(str) {
   if (!str) return 0;
 
-  const cleaned = str.replace(/,/g, '.').trim();
+  // 1. Убираем ВСЕ пробелы, потом меняем запятые на точки
+  const cleaned = str.toString().replace(/\s/g, '').replace(/,/g, '.').trim();
 
-  if (!/^-?\d+(\.\d+)?$/.test(cleaned)) return 0;
+  // 2. Проверяем, что в строке ТОЛЬКО цифры, точки, плюсы и минусы
+  // (Это защищает от ввода букв или левого кода)
+  if (!/^[0-9.+\-]+$/.test(cleaned)) return 0;
 
-  return Number(cleaned) || 0;
+  try {
+    // 3. Безопасно вычисляем строку
+    // new Function работает как eval, но чище и безопаснее
+    const result = new Function(`return ${cleaned}`)();
+
+    // 4. Проверяем, что не получилось NaN (например, если ввели "100+")
+    if (typeof result !== 'number' || isNaN(result) || !isFinite(result)) {
+      return 0;
+    }
+
+    return result;
+  } catch (e) {
+    // Если пользователь ввел незаконченное выражение вроде "100+" или "100-"
+    return 0;
+  }
 }
 
 function getVisualConfig() {
@@ -115,6 +132,11 @@ function pluralWeeks(n) {
  */
 function getContrastColor(color) {
   if (!color) return '#0f172a';
+
+  if (color.startsWith('var(')) {
+    const varName = color.match(/var\(([^)]+)\)/)[1];
+    color = getComputedStyle(document.body).getPropertyValue(varName).trim();
+  }
 
   let r, g, b;
 
@@ -688,7 +710,10 @@ async function saveCellEditor() {
     }
   }
 
-  if (el) refreshCellContent(el, App.data.plans, App.data.facts);
+  if (el) {
+    refreshCellContent(el, App.data.plans, App.data.facts);
+    updateCellCommentIcon(key);
+  }
 
   // Пересчитываем итоги и баланс
   recalcTotalsAndBalance();
@@ -979,7 +1004,7 @@ function makeBalanceRow(weeks, categories, plans, facts, initialBalance,
 // ══════════════════════════════════════════════════════════════
 // КОММЕНТАРИИ К ЯЧЕЙКАМ
 // ══════════════════════════════════════════════════════════════
-
+let _activeContextMenuListener = null;
 /**
  * Показывает контекстное меню ячейки
  */
@@ -1029,13 +1054,20 @@ function showCellContextMenu(td, event) {
   document.body.appendChild(menu);
   
   // Закрываем при клике вне
+  if (_activeContextMenuListener) {
+    document.removeEventListener('click', _activeContextMenuListener);
+  }
+
+  _activeContextMenuListener = function closeMenu(e) {
+    if (!menu.contains(e.target)) {
+      menu.remove();
+      document.removeEventListener('click', _activeContextMenuListener);
+      _activeContextMenuListener = null;
+    }
+  };
+
   setTimeout(() => {
-    document.addEventListener('click', function closeMenu(e) {
-      if (!menu.contains(e.target)) {
-        menu.remove();
-        document.removeEventListener('click', closeMenu);
-      }
-    });
+    document.addEventListener('click', _activeContextMenuListener);
   }, 0);
 }
 
@@ -1088,7 +1120,7 @@ async function saveCellComment(key) {
     showToast('Ошибка соединения', 'error');
   }
 }
-
+let _activeCommentEscapeListener = null;
 /**
  * Закрывает диалог комментария
  */
@@ -1097,8 +1129,12 @@ function closeCellCommentDialog() {
   if (dialog) {
     dialog.remove();
   }
-  // Удаляем все event listeners
-  document.removeEventListener('click', closeCellCommentDialog);
+  
+  // Правильно удаляем слушатель клавиши Escape
+  if (_activeCommentEscapeListener) {
+    document.removeEventListener('keydown', _activeCommentEscapeListener);
+    _activeCommentEscapeListener = null;
+  }
 }
 
 /**
@@ -1315,16 +1351,16 @@ function openCellCommentDialog(key) {
   });
   
   // Закрыть на Escape
-  const closeOnEscape = (e) => {
+  if (_activeCommentEscapeListener) {
+    document.removeEventListener('keydown', _activeCommentEscapeListener);
+  }
+  
+  _activeCommentEscapeListener = (e) => {
     if (e.key === 'Escape') {
       closeCellCommentDialog();
     }
   };
-  document.addEventListener('keydown', closeOnEscape);
-  
-  // Сохраняем listeners чтобы потом удалить
-  dialog.dataset.closeOnOverlay = closeOnOverlay;
-  dialog.dataset.closeOnEscape = closeOnEscape;
+  document.addEventListener('keydown', _activeCommentEscapeListener);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -2021,8 +2057,8 @@ async function renderSettingsView() {
           
           <!-- Emoji Picker Panel -->
           <div id="emoji-picker-panel" 
-              class="hidden"
-              style="width: 380px; max-height: 500px; overflow-y: auto;">
+          class="hidden"
+          style="position: fixed; z-index: 9999; width: 380px; max-height: 500px; overflow-y: auto;">
             <div class="grid grid-cols-8 gap-1.5" id="emoji-grid">
               <!-- Эмодзи будут загружены JS -->
             </div>
@@ -2388,6 +2424,9 @@ async function handleImport() {
       // Теперь загружаем данные — renderTable вызовется внутри reloadData
       await reloadData();
       
+      if (App.data) {
+        renderTable(App.data);
+      }
       // Очищаем историю undo — старые действия больше не актуальны
       UndoHistory.clear();
       
@@ -2745,7 +2784,16 @@ async function reloadData() {
     }
 
     App.data = data;
-    CellComments = data.comments || {};
+    if (Array.isArray(data.comments)) {
+      // Если Питон вернул список (List)
+      CellComments = {};
+      data.comments.forEach(c => {
+        CellComments[`${c.category_id}:${c.week_start_date || c.week_start}`] = c.comment;
+      });
+    } else {
+      // Если Питон вернул Словарь (Dict)
+      CellComments = data.comments || {};
+    }
 
     if (App.activeView === 'dashboard') {
       renderTable(data);
@@ -3463,8 +3511,19 @@ function applyTheme(isDark) {
 async function toggleTheme() {
   const isDark = !document.body.classList.contains('dark');
 
-  // Просто переключаем класс — CSS сделает мягкий переход
+  // 1. Включаем CSS-транзишены
+  document.body.classList.add('theme-transitioning');
+  
+  // Форсируем перерисовку, чтобы транзишены точно активировались до смены цветов
+  void document.body.offsetWidth;
+
+  // 2. Переключаем тему
   applyTheme(isDark);
+
+  // 3. Выключаем транзишены после завершения анимации (300ms)
+  setTimeout(() => {
+    document.body.classList.remove('theme-transitioning');
+  }, 300);
 
   localStorage.setItem('cashflow-theme', isDark ? 'dark' : 'light');
 

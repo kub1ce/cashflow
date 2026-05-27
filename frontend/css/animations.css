@@ -636,21 +636,24 @@
    Мягкое переключение темы
    ══════════════════════════════════════════════════════════════ */
 
-/* Только основные элементы */
-body,
-.bg-white,
-.bg-slate-50,
-.bg-slate-900,
-.border,
-.border-slate-200,
-.border-slate-700,
-.text-slate-900,
-.text-slate-800,
-.text-slate-700,
-.text-slate-600,
-.text-slate-500 {
+.theme-transitioning,
+.theme-transitioning body,
+.theme-transitioning .bg-white,
+.theme-transitioning .bg-slate-50,
+.theme-transitioning .bg-slate-900,
+.theme-transitioning .border,
+.theme-transitioning .border-slate-200,
+.theme-transitioning .border-slate-700,
+.theme-transitioning .text-slate-900,
+.theme-transitioning .text-slate-800,
+.theme-transitioning .text-slate-700,
+.theme-transitioning .text-slate-600,
+.theme-transitioning .text-slate-500 {
   transition:
     background-color 0.3s ease,
     color 0.3s ease,
     border-color 0.3s ease;
 }
+
+@keyframes spin { 100% { transform: rotate(360deg); } }
+.svg-spin svg { animation: spin 0.6s linear infinite; }

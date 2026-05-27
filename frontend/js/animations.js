@@ -29,7 +29,7 @@ const Anim = {
         // Fallback: ручная анимация
         fromEl.classList.add('view-panel', 'view-exit');
         
-        const duration = 200;
+        const duration = 250;
         
         setTimeout(() => {
           fromEl.classList.add('hidden');
@@ -250,21 +250,12 @@ const Anim = {
   
     spinAutofillBtn(btn, promise) {
       if (!btn) return promise;
-      
-      const svg = btn.querySelector('svg');
-      if (!svg) return promise;
-  
-      svg.style.transition = 'transform 600ms ease';
-      svg.style.transform  = 'rotate(360deg)';
-  
+      btn.classList.add('svg-spin');
       return promise.finally(() => {
-        setTimeout(() => {
-          svg.style.transform  = '';
-          svg.style.transition = '';
-        }, 200);
+        btn.classList.remove('svg-spin');
       });
-    },
-  };
+    }
+};
   
   // ══════════════════════════════════════════════════════════════
   // RIPPLE — глобальная инициализация для кнопок
@@ -293,31 +284,23 @@ window.switchView = function(view) {
   // Просто вызываем оригинал — он уже всё делает правильно
   // Добавляем только визуальную анимацию поверх
   
-  const fromView = App.activeView;
+  const fromView = App?.activeView;
   if (fromView === view) return;
 
   const fromEl = document.getElementById(`view-${fromView}`);
   const toEl   = document.getElementById(`view-${view}`);
 
-  // Сначала вызываем оригинальную функцию — она переключает всё корректно
-  _originalSwitchView(view);
-
-  // Поверх добавляем анимацию появления нового view
-  if (toEl) {
-    toEl.classList.add('view-panel', 'view-enter');
-    setTimeout(() => {
-      toEl.classList.remove('view-panel', 'view-enter');
-    }, 300);
-  }
-
-  // Анимируем items настроек после их рендера
-  if (view === 'settings') {
-    setTimeout(() => {
+  Anim.switchView(fromEl, toEl, () => {
+    // В момент переключения (или внутри View Transition) вызываем оригинальную логику
+    _originalSwitchView(view);
+  }).then(() => {
+    // Анимируем элементы настроек после того, как view переключился
+    if (view === 'settings') {
       ['s-income-cats', 's-expense-cats'].forEach(id => {
         Anim.animateSettingsItems(document.getElementById(id));
       });
-    }, 200);
-  }
+    }
+  });
 };
   
   // ── showModal / hideModal — с анимацией ─────────────────────
@@ -458,32 +441,25 @@ window.switchView = function(view) {
   // ── onDragOver — добавляем drag-over indicator ──────────────
   
   const _originalOnDragOver = window.onDragOver;
-  
   window.onDragOver = function(e) {
     _originalOnDragOver?.call(this, e);
     
-    // Убираем с предыдущего
+    // Ищем текущую строку, над которой находится мышь
+    const row = e.currentTarget || e.target.closest('tr');
+    if (!row) return;
+
     document.querySelectorAll('.drag-over').forEach(r => {
-      if (r !== this) Anim.markDragOver(r, false);
+      if (r !== row) Anim.markDragOver(r, false);
     });
     
-    Anim.markDragOver(this, true);
+    Anim.markDragOver(row, true);
   };
-  
+
   const _originalOnDrop = window.onDrop;
-  
   window.onDrop = function(e) {
-    Anim.markDragOver(this, false);
+    const row = e.currentTarget || e.target.closest('tr');
+    Anim.markDragOver(row, false);
     _originalOnDrop?.call(this, e);
-  };
-  
-  const _originalOnDragEnd = window.onDragEnd;
-  
-  window.onDragEnd = async function() {
-    document.querySelectorAll('.drag-over').forEach(r => {
-      Anim.markDragOver(r, false);
-    });
-    await _originalOnDragEnd?.call(this);
   };
   
   // ── renderSettingsView — анимируем items ────────────────────

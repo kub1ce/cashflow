@@ -1,62 +1,54 @@
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, DeclarativeBase
 import os
-import sys
+import sqlite3
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
-
-def get_app_dir() -> str:
-    """
-    Возвращает папку для хранения данных приложения.
-    
-    - При запуске через .exe (PyInstaller):
-      C:\\Users\\Username\\AppData\\Local\\CashFlow\\
-    
-    - При запуске через python main.py (разработка):
-      папка проекта (рядом с main.py)
-    """
-    if getattr(sys, 'frozen', False):
-        # Запущено как .exe
-        app_data = os.environ.get('LOCALAPPDATA', os.path.expanduser('~'))
-        app_dir  = os.path.join(app_data, 'CashFlow')
+def get_app_dir():
+    """Возвращает папку пользователя для БД приложения"""
+    if os.name == 'nt':
+        app_dir = os.path.join(os.environ.get('LOCALAPPDATA'), 'CashFlow')
     else:
-        # Запущено как скрипт (разработка)
-        app_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
+        app_dir = os.path.expanduser('~/.config/CashFlow')
     os.makedirs(app_dir, exist_ok=True)
     return app_dir
 
+def get_db_path():
+    """Определяет путь к БД на основе наличия папки проекта"""
+    
+    # Проверяем, находимся ли мы внутри проекта (есть папка 'app' или 'src')
+    current_file = os.path.abspath(__file__)
+    project_root = os.path.dirname(os.path.dirname(current_file))
+    
+    # Если это похоже на проект (есть папка app или venv рядом)
+    if os.path.exists(os.path.join(project_root, 'app')) or \
+       os.path.exists(os.path.join(project_root, 'venv')) or \
+       os.path.exists(os.path.join(project_root, '.git')):
+        # Это разработка
+        db_dir = os.path.join(project_root, 'data')
+        os.makedirs(db_dir, exist_ok=True)
+        return os.path.join(db_dir, 'cashflow.db')
+    else:
+        # Это пользовательская версия (.exe)
+        app_dir = get_app_dir()
+        return os.path.join(app_dir, 'cashflow.db')
 
 APP_DIR = get_app_dir()
-DB_PATH = os.path.join(APP_DIR, 'cashflow.db')
+DB_PATH = get_db_path()
+
 
 engine = create_engine(
     f'sqlite:///{DB_PATH}',
     connect_args={"check_same_thread": False}
 )
-
 SessionLocal = sessionmaker(bind=engine)
-
 
 class Base(DeclarativeBase):
     pass
 
-
 def init_db():
-    """Создаёт все таблицы если их нет + накатывает миграции"""
-    from app.models import Category, Account, Plan, Fact, Transfer, Settings
+    """Создаёт таблицы если их нет"""
+    from app.models import Category, Account, Plan, Fact, Settings
     Base.metadata.create_all(engine)
-    _run_migrations()
 
-
-def _run_migrations():
-    """Накатывает изменения схемы для существующих БД"""
-    with engine.connect() as conn:
-        # Category.is_custom
-        try:
-            conn.execute(text(
-                "ALTER TABLE categories ADD COLUMN "
-                "is_custom INTEGER NOT NULL DEFAULT 1"
-            ))
-            conn.commit()
-        except Exception:
-            pass  # колонка уже есть
+# Инициализируем БД при импорте
+init_db()
