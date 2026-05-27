@@ -1,0 +1,656 @@
+/* ══════════════════════════════════════════════════════════════
+   БАЗОВЫЕ ПЕРЕМЕННЫЕ АНИМАЦИЙ
+   ══════════════════════════════════════════════════════════════ */
+
+   :root {
+    --anim-fast:    150ms;
+    --anim-normal:  250ms;
+    --anim-slow:    400ms;
+    --ease-out:     cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-in-out:  cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     VIEW TRANSITIONS (Dashboard ↔ Settings)
+     ══════════════════════════════════════════════════════════════ */
+  
+  .view-panel {
+    animation-duration: var(--anim-normal);
+    animation-timing-function: var(--ease-out);
+    animation-fill-mode: both;
+  }
+  
+  .view-enter {
+    animation-name: viewEnter;
+  }
+  
+  .view-exit {
+    animation-name: viewExit;
+    pointer-events: none;
+  }
+  
+  @keyframes viewEnter {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes viewExit {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     СТРОКИ ТАБЛИЦЫ — STAGGER при рендере
+     ══════════════════════════════════════════════════════════════ */
+  
+  @keyframes rowAppear {
+    from {
+      opacity: 0;
+      transform: translateX(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  .row-animate {
+    animation: rowAppear var(--anim-normal) var(--ease-out) both;
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     ЯЧЕЙКИ ДАННЫХ
+     ══════════════════════════════════════════════════════════════ */
+  
+  /* Hover */
+  .data-cell {
+    transition:
+      background-color var(--anim-fast) var(--ease-in-out),
+      box-shadow       var(--anim-fast) var(--ease-in-out),
+      transform        var(--anim-fast) var(--ease-in-out);
+  }
+  
+  .data-cell:hover {
+    z-index: 2;
+    box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.4);
+  }
+  
+  /* Мигание при сохранении */
+  @keyframes cellSaved {
+    0%   { background-color: rgba(16, 185, 129, 0.25); }
+    60%  { background-color: rgba(16, 185, 129, 0.15); }
+    100% { background-color: transparent; }
+  }
+  
+  .cell-saved-flash {
+    animation: cellSaved 600ms var(--ease-out) forwards;
+  }
+  
+  /* Мигание при ошибке */
+  @keyframes cellError {
+    0%, 100% { background-color: transparent; }
+    25%, 75%  { background-color: rgba(239, 68, 68, 0.2); }
+    50%        { background-color: rgba(239, 68, 68, 0.3); }
+  }
+  
+  .cell-error-flash {
+    animation: cellError 500ms var(--ease-in-out);
+  }
+  
+  /* Пульс для ячеек с только планом (подсказка «нажми меня») */
+  @keyframes planPulse {
+    0%, 100% { box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.3); }
+    50%       { box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.6); }
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     INLINE РЕДАКТОР
+     ══════════════════════════════════════════════════════════════ */
+  
+  @keyframes editorPop {
+    from {
+      opacity: 0;
+      transform: scale(0.92) translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+  
+  .cell-editor {
+    animation: editorPop var(--anim-fast) var(--ease-spring);
+    transform-origin: top left;
+  }
+  
+  /* Shake при вводе отрицательного */
+  @keyframes editorShake {
+    0%, 100% { transform: translateX(0); }
+    20%       { transform: translateX(-6px); }
+    40%       { transform: translateX(6px); }
+    60%       { transform: translateX(-4px); }
+    80%       { transform: translateX(4px); }
+  }
+  
+  .editor-shake {
+    animation: editorShake 300ms var(--ease-in-out);
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     МОДАЛЬНЫЕ ОКНА
+     ══════════════════════════════════════════════════════════════ */
+  
+  /* Оверлей */
+  @keyframes overlayIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  
+  @keyframes overlayOut {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+  }
+  
+  /* Контент */
+  @keyframes modalIn {
+    from {
+      opacity: 0;
+      transform: scale(0.94) translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+  
+  @keyframes modalOut {
+    from {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.96) translateY(8px);
+    }
+  }
+  
+  .modal-overlay {
+    animation: overlayIn var(--anim-normal) var(--ease-out);
+  }
+  
+  .modal-overlay.closing {
+    animation: overlayOut var(--anim-fast) var(--ease-in-out) forwards;
+  }
+  
+  .modal-content {
+    animation: modalIn var(--anim-normal) var(--ease-spring);
+  }
+  
+  .modal-overlay.closing .modal-content {
+    animation: modalOut var(--anim-fast) var(--ease-in-out) forwards;
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     TOAST
+     ══════════════════════════════════════════════════════════════ */
+  
+  @keyframes toastIn {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(16px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0) scale(1);
+    }
+  }
+  
+  @keyframes toastOut {
+    from {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(-50%) translateY(12px) scale(0.95);
+    }
+  }
+  
+  .app-toast-enter {
+    animation: toastIn 280ms var(--ease-spring) forwards;
+  }
+  
+  .app-toast-exit {
+    animation: toastOut 220ms var(--ease-in-out) forwards;
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     НАВИГАЦИЯ — active indicator
+     ══════════════════════════════════════════════════════════════ */
+  
+  .nav-btn {
+    position: relative;
+    transition:
+      color            var(--anim-fast) var(--ease-in-out),
+      background-color var(--anim-fast) var(--ease-in-out);
+  }
+  
+  /* Анимированная полоска активного пункта */
+  .nav-btn::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%) scaleY(0);
+    width: 3px;
+    height: 60%;
+    border-radius: 0 3px 3px 0;
+    background: #3b82f6;
+    transition: transform var(--anim-normal) var(--ease-spring);
+  }
+  
+  .nav-btn.active::after {
+    transform: translateY(-50%) scaleY(1);
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     КНОПКИ — Ripple Effect
+     ══════════════════════════════════════════════════════════════ */
+  
+  .btn-ripple {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  @keyframes ripple {
+    from {
+      transform: scale(0);
+      opacity: 0.4;
+    }
+    to {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+  
+  .ripple-circle {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    width: 60px;
+    height: 60px;
+    margin-top: -30px;
+    margin-left: -30px;
+    pointer-events: none;
+    animation: ripple 500ms var(--ease-out) forwards;
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     DRAG & DROP
+     ══════════════════════════════════════════════════════════════ */
+  
+  .row-category {
+    transition: opacity var(--anim-fast) var(--ease-in-out);
+  }
+  
+  .row-category.dragging {
+    opacity: 0.4;
+  }
+  
+  .row-category.drag-over {
+    box-shadow: 0 -2px 0 0 #3b82f6;
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     BALANCE ROW — числа
+     ══════════════════════════════════════════════════════════════ */
+  
+  .balance-cell-inner span {
+    display: inline-block;
+    transition: color var(--anim-normal) var(--ease-in-out);
+  }
+  
+  /* Мигание при изменении баланса */
+  @keyframes balanceUpdate {
+    0%   { opacity: 1; }
+    30%  { opacity: 0.4; }
+    100% { opacity: 1; }
+  }
+  
+  .balance-updating {
+    animation: balanceUpdate 400ms var(--ease-out);
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     КНОПКА «АВТОЗАПОЛНЕНИЕ»
+     ══════════════════════════════════════════════════════════════ */
+  
+  .autofill-btn {
+    transition:
+      opacity    var(--anim-fast) var(--ease-in-out),
+      transform  var(--anim-fast) var(--ease-spring),
+      color      var(--anim-fast) var(--ease-in-out);
+  }
+  
+  .autofill-btn:hover {
+    transform: rotate(180deg) scale(1.1);
+  }
+  
+  .autofill-btn:active {
+    transform: rotate(180deg) scale(0.95);
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     WAND BUTTON (покрыть дефицит)
+     ══════════════════════════════════════════════════════════════ */
+  
+  @keyframes wandFloat {
+    0%, 100% { transform: translateY(0) rotate(-10deg); }
+    50%       { transform: translateY(-3px) rotate(10deg); }
+  }
+  
+  .wand-btn {
+    transition: transform var(--anim-fast) var(--ease-spring);
+    animation: wandFloat 2s ease-in-out infinite;
+  }
+  
+  .wand-btn:hover {
+    animation: none;
+    transform: scale(1.2) rotate(15deg);
+  }
+  
+  .wand-btn:active {
+    transform: scale(0.9);
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     СЕКЦИИ ТАБЛИЦЫ
+     ══════════════════════════════════════════════════════════════ */
+  
+  @keyframes sectionSlide {
+    from {
+      opacity: 0;
+      transform: translateX(-12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  .row-section {
+    animation: sectionSlide var(--anim-normal) var(--ease-out) both;
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     LOADER
+     ══════════════════════════════════════════════════════════════ */
+  
+  @keyframes loaderFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  
+  @keyframes loaderFadeOut {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+  }
+  
+  #loader {
+    transition: opacity var(--anim-fast) var(--ease-in-out);
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     SETTINGS — items appear
+     ══════════════════════════════════════════════════════════════ */
+  
+  @keyframes settingsItemIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .settings-cat-item {
+    animation: settingsItemIn var(--anim-normal) var(--ease-out) both;
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     PREVIEW БЛОК (autofill, deficit parts)
+     ══════════════════════════════════════════════════════════════ */
+  
+  @keyframes previewExpand {
+    from {
+      opacity: 0;
+      max-height: 0;
+      transform: translateY(-6px);
+    }
+    to {
+      opacity: 1;
+      max-height: 200px;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes previewCollapse {
+    from {
+      opacity: 1;
+      max-height: 200px;
+    }
+    to {
+      opacity: 0;
+      max-height: 0;
+    }
+  }
+  
+  #af-preview:not(.hidden),
+  #def-parts-preview:not(.hidden),
+  #reconcile-diff-preview:not(.hidden) {
+    animation: previewExpand var(--anim-normal) var(--ease-out) both;
+    overflow: hidden;
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     COLOR INPUT в настройках
+     ══════════════════════════════════════════════════════════════ */
+  
+  input[type="color"] {
+    transition: transform var(--anim-fast) var(--ease-spring);
+    cursor: pointer;
+  }
+  
+  input[type="color"]:hover {
+    transform: scale(1.05);
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     EMOJI PICKER
+     ══════════════════════════════════════════════════════════════ */
+  
+  @keyframes emojiPickerIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+  
+  #emoji-picker-panel:not(.hidden),
+  [id^="emoji-picker-edit-panel-"]:not(.hidden) {
+    animation: emojiPickerIn var(--anim-fast) var(--ease-spring);
+  }
+  
+  .emoji-btn {
+    transition: transform var(--anim-fast) var(--ease-spring);
+  }
+  
+  .emoji-btn:hover {
+    transform: scale(1.3);
+  }
+  
+  .emoji-btn:active {
+    transform: scale(0.9);
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     WEEK HEADER HIGHLIGHT — улучшенный
+     ══════════════════════════════════════════════════════════════ */
+  
+  @keyframes weekPing {
+    0%   { box-shadow: 0 0 0 0 rgba(252, 165, 165, 0.6); }
+    70%  { box-shadow: 0 0 0 8px rgba(252, 165, 165, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(252, 165, 165, 0); }
+  }
+  
+  .week-highlight {
+    animation: weekPing 1s ease-out 3;
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     CONFIRM DIALOG — дополнительно
+     ══════════════════════════════════════════════════════════════ */
+  
+  #confirm-dialog .modal-content {
+    animation: modalIn var(--anim-normal) var(--ease-spring);
+  }
+  
+  /* ══════════════════════════════════════════════════════════════
+     REDUCE MOTION — уважаем настройки ОС
+     ══════════════════════════════════════════════════════════════ */
+  
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+   КОММЕНТАРИИ К ЯЧЕЙКАМ
+   ══════════════════════════════════════════════════════════════ */
+
+.comment-icon {
+  animation: commentPulse 0.4s var(--ease-spring) forwards;
+}
+
+@keyframes commentPulse {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.cell-context-menu {
+  animation: contextMenuIn 150ms var(--ease-spring) forwards;
+}
+
+@keyframes contextMenuIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.cell-context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #334155;
+  transition: all 150ms var(--ease-in-out);
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.cell-context-menu button:last-child {
+  border-bottom: none;
+}
+
+.cell-context-menu button:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.cell-context-menu button:active {
+  background: #e2e8f0;
+}
+
+.comment-dialog-overlay {
+  animation: overlayIn 200ms var(--ease-in-out);
+}
+
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.comment-dialog-content {
+  animation: modalIn 250ms var(--ease-spring);
+}
+
+#comment-textarea {
+  font-family: inherit !important;
+}
+
+#comment-textarea:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Мягкое переключение темы
+   ══════════════════════════════════════════════════════════════ */
+
+/* Только основные элементы */
+body,
+.bg-white,
+.bg-slate-50,
+.bg-slate-900,
+.border,
+.border-slate-200,
+.border-slate-700,
+.text-slate-900,
+.text-slate-800,
+.text-slate-700,
+.text-slate-600,
+.text-slate-500 {
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease;
+}

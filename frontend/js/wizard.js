@@ -425,11 +425,10 @@ async function initWindowResize() {
 // ══════════════════════════════════════════════════════════════
 
 function toggleTheme() {
-  const isDark =
-    !document.documentElement.classList.contains('dark');
+  const isDark = !document.documentElement.classList.contains('dark');
 
   document.documentElement.classList.toggle('dark', isDark);
-  document.body.classList.toggle('dark', isDark); // ← ВАЖНО
+  document.body.classList.toggle('dark', isDark);
 
   localStorage.setItem(
     'cashflow-theme',

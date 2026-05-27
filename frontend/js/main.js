@@ -13,6 +13,8 @@ const App = {
   },
 };
 
+const CellComments = {};
+
 const Deficit = {
   weekStart: null,
   weekEnd:   null,
@@ -391,15 +393,14 @@ function makeDataCell(cat, week, plans, facts, cwColor) {
   if (isCurrent) {
     td.style.backgroundColor = cwColor;
   } else if (isPast) {
-    td.style.backgroundColor = PAST_WEEK_COLOR; // Cветло-серый для прошедших ячеек
+    td.style.backgroundColor = PAST_WEEK_COLOR;
   }
 
   const key = `${cat.id}:${week.week_start}`;
   const hasPlan = !!(plans?.[key]?.amount);
   const hasFact = !!(facts?.[key] && facts[key].length > 0);
 
-  // Добавляем класс если есть только план (нет факта) - только для НЕ прошедших недель
-  if (hasPlan && !hasFact && !isPast) { // используем hasPlan/hasFact вместо isPlan/isFact
+  if (hasPlan && !hasFact && !isPast) {
     td.classList.add('has-plan');
     if (isCurrent) {
       td.classList.add('current-week');
@@ -416,15 +417,16 @@ function makeDataCell(cat, week, plans, facts, cwColor) {
     openCellEditor(td, hasFact ? 'fact' : 'plan');
   });
 
-  // Правый клик — сразу факт
+  // Правый клик — меню с комментарием
   td.addEventListener('contextmenu', e => {
     e.preventDefault();
     e.stopPropagation();
-    openCellEditor(td, 'fact');
+    showCellContextMenu(td, e);
   });
 
   return td;
 }
+
 
 // ── Контент ячейки ─────────────────────────────────────────────────────────────
 function refreshCellContent(td, plans, facts) {
@@ -470,6 +472,7 @@ function refreshCellContent(td, plans, facts) {
   // Если пусто — ничего не выводим (как в оригинале)
 
   td.innerHTML = `<div class="data-cell-inner">${html}</div>`;
+  updateCellCommentIcon(key);
 }
 
 // ── Inline редактор ────────────────────────────────────────────────────────────
@@ -745,7 +748,7 @@ function recalcTotalsAndBalance() {
     if (!div) return;  // защита от null
 
     div.textContent = inc ? formatAmount(inc) : '';
-    div.style.color = vc.totalIncomeColor || '#16a34a';
+    div.style.setProperty('color', vc.totalIncomeColor || '#16a34a', 'important');
   });
 
 
@@ -852,11 +855,16 @@ function makeTotalRow(type, label, weeks, typeCats, plans, facts, color, cwColor
       ? `-${formatAmount(total)}`
       : (total ? formatAmount(total) : '');
 
-    td.innerHTML = `
+      td.innerHTML = `
       <div style="padding:4px 8px;font-weight:700;text-align:right;
-                  color:${color};font-variant-numeric:tabular-nums;">
+                  font-variant-numeric:tabular-nums;">
         ${display}
-      </div>`;
+      </div>`
+      const div = td.querySelector('div');
+      if (div) {
+        div.style.setProperty('color', color, 'important');
+      }
+
     tr.appendChild(td);
   });
 
@@ -949,6 +957,500 @@ function makeBalanceRow(weeks, categories, plans, facts, initialBalance,
   });
 
   return tr;
+}
+
+// ══════════════════════════════════════════════════════════════
+// КОММЕНТАРИИ К ЯЧЕЙКАМ
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Показывает контекстное меню ячейки
+ */
+function showCellContextMenu(td, event) {
+  const key = `${td.dataset.categoryId}:${td.dataset.weekStart}`;
+  const hasComment = !!CellComments[key];
+  
+  // Закрываем старое меню
+  const oldMenu = document.getElementById('cell-context-menu');
+  if (oldMenu) oldMenu.remove();
+  
+  const isDark = document.body.classList.contains('dark');
+  
+  const menu = document.createElement('div');
+  menu.id = 'cell-context-menu';
+  menu.className = 'cell-context-menu';
+  menu.style.cssText = `
+    position: fixed;
+    top: ${event.clientY}px;
+    left: ${event.clientX}px;
+    background: ${isDark ? '#334155' : '#ffffff'};
+    border: 1px solid ${isDark ? '#475569' : '#e2e8f0'};
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10000;
+    min-width: 200px;
+    overflow: hidden;
+  `;
+  
+  menu.innerHTML = `
+    <button class="context-menu-item" onclick="openCellCommentDialog('${key}')" style="color: ${isDark ? '#e2e8f0' : '#334155'}; background: none; border: none; width: 100%; text-align: left; padding: 12px 16px; cursor: pointer; display: flex; align-items: center; gap: 12px; font-size: 14px; transition: all 150ms ease;">
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
+      </svg>
+      ${hasComment ? 'Редактировать' : 'Добавить'} комментарий
+    </button>
+    ${hasComment ? `
+      <button class="context-menu-item" onclick="deleteCellComment('${key}')" style="color: ${isDark ? '#e2e8f0' : '#334155'}; background: none; border: none; border-top: 1px solid ${isDark ? '#475569' : '#f1f5f9'}; width: 100%; text-align: left; padding: 12px 16px; cursor: pointer; display: flex; align-items: center; gap: 12px; font-size: 14px; transition: all 150ms ease;">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+        </svg>
+        Удалить комментарий
+      </button>
+    ` : ''}
+  `;
+  
+  document.body.appendChild(menu);
+  
+  // Закрываем при клике вне
+  setTimeout(() => {
+    document.addEventListener('click', function closeMenu(e) {
+      if (!menu.contains(e.target)) {
+        menu.remove();
+        document.removeEventListener('click', closeMenu);
+      }
+    });
+  }, 0);
+}
+
+/**
+ * Открывает диалог комментария
+ */
+function openCellCommentDialog(key) {
+  // Закрываем контекстное меню
+  const menu = document.getElementById('cell-context-menu');
+  if (menu) menu.remove();
+  
+  const currentComment = CellComments[key] || '';
+  const isDark = document.body.classList.contains('dark');
+  
+  const dialog = document.createElement('div');
+  dialog.id = 'comment-dialog';
+  dialog.style.cssText = `
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    z-index: 10001;
+    backdrop-filter: blur(2px);
+  `;
+  
+  const content = document.createElement('div');
+  content.style.cssText = `
+    background: ${isDark ? '#334155' : '#ffffff'};
+    border-radius: 12px;
+    padding: 24px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: modalIn 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  `;
+  
+  content.innerHTML = `
+    <h3 style="
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: ${isDark ? '#f1f5f9' : '#0f172a'};
+    ">Комментарий к ячейке</h3>
+    
+    <textarea id="comment-textarea"
+      placeholder="Введите комментарий..."
+      style="
+        width: 100%;
+        height: 120px;
+        border: 2px solid ${isDark ? '#475569' : '#e2e8f0'};
+        border-radius: 8px;
+        padding: 12px;
+        font-family: inherit;
+        font-size: 14px;
+        resize: none;
+        outline: none;
+        background: ${isDark ? '#1e293b' : '#f8fafc'};
+        color: ${isDark ? '#f1f5f9' : '#0f172a'};
+        box-sizing: border-box;
+      "
+      onkeydown="if(event.key==='Escape') closeCellCommentDialog()"
+    >${currentComment}</textarea>
+    
+    <div style="display: flex; gap: 12px; margin-top: 20px; justify-content: flex-end;">
+      <button id="comment-cancel"
+        style="
+          padding: 10px 20px;
+          background: ${isDark ? '#475569' : '#f1f5f9'};
+          color: ${isDark ? '#f1f5f9' : '#0f172a'};
+          border: 1px solid ${isDark ? '#64748b' : '#e2e8f0'};
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: 500;
+          transition: all 0.2s ease;
+          font-size: 14px;
+        ">
+        Отмена
+      </button>
+      <button id="comment-save"
+        style="
+          padding: 10px 20px;
+          background: #3b82f6;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: 500;
+          transition: all 0.2s ease;
+          font-size: 14px;
+        ">
+        Сохранить
+      </button>
+    </div>
+  `;
+  
+  dialog.appendChild(content);
+  document.body.appendChild(dialog);
+  
+  // События
+  const textarea = document.getElementById('comment-textarea');
+  const cancelBtn = document.getElementById('comment-cancel');
+  const saveBtn = document.getElementById('comment-save');
+  
+  setTimeout(() => {
+    textarea.focus();
+  }, 100);
+  
+  // Закрыть при клике на оверлей
+  dialog.addEventListener('click', (e) => {
+    if (e.target === dialog) closeCellCommentDialog();
+  });
+  
+  // Кнопки
+  cancelBtn.addEventListener('click', closeCellCommentDialog);
+  saveBtn.addEventListener('click', () => saveCellComment(key));
+  
+  // Также закрываем при клике вне
+  setTimeout(() => {
+    document.addEventListener('click', function closeOnClickOutside(e) {
+      const currentDialog = document.getElementById('comment-dialog');
+      if (currentDialog && !currentDialog.contains(e.target)) {
+        closeCellCommentDialog();
+        document.removeEventListener('click', closeOnClickOutside);
+      }
+    });
+  }, 50);
+}
+
+/**
+ * Сохраняет комментарий
+ */
+function saveCellComment(key) {
+  const textarea = document.getElementById('comment-textarea');
+  const text = textarea.value.trim();
+  
+  if (text) {
+    CellComments[key] = text;
+    showToast('Комментарий сохранён', 'success');
+  } else {
+    delete CellComments[key];
+  }
+  
+  closeCellCommentDialog();
+  
+  // Обновляем иконку
+  const [categoryId, weekStart] = key.split(':');
+  const td = document.querySelector(
+    `td[data-category-id="${categoryId}"][data-week-start="${weekStart}"]`
+  );
+  if (td) {
+    refreshCellContent(td, App.data.plans, App.data.facts);
+    updateCellCommentIcon(key);
+  }
+}
+
+/**
+ * Удаляет комментарий
+ */
+function deleteCellComment(key) {
+  delete CellComments[key];
+  showToast('Комментарий удалён', 'success');
+  
+  // Закрываем меню
+  const menu = document.getElementById('cell-context-menu');
+  if (menu) menu.remove();
+  
+  // Обновляем иконку
+  const [categoryId, weekStart] = key.split(':');
+  const td = document.querySelector(
+    `td[data-category-id="${categoryId}"][data-week-start="${weekStart}"]`
+  );
+  if (td) {
+    updateCellCommentIcon(key);
+  }
+}
+
+/**
+ * Закрывает диалог комментария
+ */
+function closeCellCommentDialog() {
+  const dialog = document.getElementById('comment-dialog');
+  if (dialog) {
+    dialog.remove();
+  }
+  // Удаляем все event listeners
+  document.removeEventListener('click', closeCellCommentDialog);
+}
+
+/**
+ * Обновляет иконку комментария в ячейке
+ */
+function updateCellCommentIcon(key) {
+  const [categoryId, weekStart] = key.split(':');
+  const td = document.querySelector(
+    `td[data-category-id="${categoryId}"][data-week-start="${weekStart}"]`
+  );
+  
+  if (!td) return;
+  
+  // Удаляем старую иконку из ячейки
+  const oldIcon = td.querySelector('.comment-icon');
+  if (oldIcon) oldIcon.remove();
+  
+  // Добавляем новую если есть комментарий
+  if (CellComments[key]) {
+    const icon = document.createElement('button');
+    icon.className = 'comment-icon';
+    icon.type = 'button';
+    icon.title = CellComments[key];
+    icon.innerHTML = '💬';
+    icon.style.cssText = `
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: none;
+      border: none;
+      font-size: 14px;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      transition: transform 0.2s ease;
+      z-index: 10;
+      width: auto;
+      height: auto;
+    `;
+    
+    icon.addEventListener('mouseover', () => {
+      icon.style.transform = 'scale(1.3)';
+    });
+    icon.addEventListener('mouseout', () => {
+      icon.style.transform = 'scale(1)';
+    });
+    icon.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      openCellCommentDialog(key);
+    });
+    
+    // Важно: добавляем иконку прямо в td, а не в inner
+    td.style.position = 'relative';
+    td.appendChild(icon);
+  }
+}
+
+/**
+ * Сохраняет комментарий
+ */
+function saveCellComment(key) {
+  const textarea = document.getElementById('comment-textarea');
+  if (!textarea) return;
+  
+  const text = textarea.value.trim();
+  
+  if (text) {
+    CellComments[key] = text;
+    showToast('Комментарий сохранён', 'success');
+  } else {
+    delete CellComments[key];
+  }
+  
+  closeCellCommentDialog();
+  
+  // Обновляем иконку
+  const [categoryId, weekStart] = key.split(':');
+  const td = document.querySelector(
+    `td[data-category-id="${categoryId}"][data-week-start="${weekStart}"]`
+  );
+  if (td) {
+    updateCellCommentIcon(key);
+  }
+}
+
+/**
+ * Удаляет комментарий
+ */
+function deleteCellComment(key) {
+  delete CellComments[key];
+  showToast('Комментарий удалён', 'success');
+  
+  // Закрываем меню
+  const menu = document.getElementById('cell-context-menu');
+  if (menu) menu.remove();
+  
+  // Обновляем иконку
+  const [categoryId, weekStart] = key.split(':');
+  const td = document.querySelector(
+    `td[data-category-id="${categoryId}"][data-week-start="${weekStart}"]`
+  );
+  if (td) {
+    updateCellCommentIcon(key);
+  }
+}
+
+/**
+ * Открывает диалог комментария
+ */
+function openCellCommentDialog(key) {
+  // Закрываем контекстное меню
+  const menu = document.getElementById('cell-context-menu');
+  if (menu) menu.remove();
+  
+  // Закрываем старый диалог если есть
+  const oldDialog = document.getElementById('comment-dialog');
+  if (oldDialog) oldDialog.remove();
+  
+  const currentComment = CellComments[key] || '';
+  const isDark = document.body.classList.contains('dark');
+  
+  const dialog = document.createElement('div');
+  dialog.id = 'comment-dialog';
+  dialog.style.cssText = `
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    z-index: 10001;
+    backdrop-filter: blur(2px);
+  `;
+  
+  const content = document.createElement('div');
+  content.style.cssText = `
+    background: ${isDark ? '#334155' : '#ffffff'};
+    border-radius: 12px;
+    padding: 24px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: modalIn 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  `;
+  
+  content.innerHTML = `
+    <h3 style="
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: ${isDark ? '#f1f5f9' : '#0f172a'};
+    ">Комментарий к ячейке</h3>
+    
+    <textarea id="comment-textarea"
+      placeholder="Введите комментарий..."
+      style="
+        width: 100%;
+        height: 120px;
+        border: 2px solid ${isDark ? '#475569' : '#e2e8f0'};
+        border-radius: 8px;
+        padding: 12px;
+        font-family: inherit;
+        font-size: 14px;
+        resize: none;
+        outline: none;
+        background: ${isDark ? '#1e293b' : '#f8fafc'};
+        color: ${isDark ? '#f1f5f9' : '#0f172a'};
+        box-sizing: border-box;
+      "
+    >${currentComment}</textarea>
+    
+    <div style="display: flex; gap: 12px; margin-top: 20px; justify-content: flex-end;">
+      <button id="comment-cancel"
+        style="
+          padding: 10px 20px;
+          background: ${isDark ? '#475569' : '#f1f5f9'};
+          color: ${isDark ? '#f1f5f9' : '#0f172a'};
+          border: 1px solid ${isDark ? '#64748b' : '#e2e8f0'};
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: 500;
+          transition: all 0.2s ease;
+          font-size: 14px;
+        ">
+        Отмена
+      </button>
+      <button id="comment-save"
+        style="
+          padding: 10px 20px;
+          background: #3b82f6;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: 500;
+          transition: all 0.2s ease;
+          font-size: 14px;
+        ">
+        Сохранить
+      </button>
+    </div>
+  `;
+  
+  dialog.appendChild(content);
+  document.body.appendChild(dialog);
+  
+  // События
+  const textarea = document.getElementById('comment-textarea');
+  const cancelBtn = document.getElementById('comment-cancel');
+  const saveBtn = document.getElementById('comment-save');
+  
+  setTimeout(() => {
+    if (textarea) textarea.focus();
+  }, 100);
+  
+  // Закрыть при клике на оверлей
+  const closeOnOverlay = (e) => {
+    if (e.target === dialog) {
+      closeCellCommentDialog();
+    }
+  };
+  dialog.addEventListener('click', closeOnOverlay);
+  
+  // Кнопки
+  cancelBtn.addEventListener('click', () => {
+    closeCellCommentDialog();
+  });
+  
+  saveBtn.addEventListener('click', () => {
+    saveCellComment(key);
+  });
+  
+  // Закрыть на Escape
+  const closeOnEscape = (e) => {
+    if (e.key === 'Escape') {
+      closeCellCommentDialog();
+    }
+  };
+  document.addEventListener('keydown', closeOnEscape);
+  
+  // Сохраняем listeners чтобы потом удалить
+  dialog.dataset.closeOnOverlay = closeOnOverlay;
+  dialog.dataset.closeOnEscape = closeOnEscape;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -2529,10 +3031,38 @@ async function undoAutofill(action) {
 
 async function undoLoanRepayment(action) {
   const { weekStart, weekEnd } = action;
-  await pywebview.api.undo_loan_repayment({
-    week_start: weekStart,
-    week_end:   weekEnd,
-  });
+  
+  try {
+    // Вызываем API для отката
+    const result = await pywebview.api.undo_loan_repayment({
+      week_start: weekStart,
+      week_end:   weekEnd,
+    });
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Ошибка отката');
+    }
+    
+    // Очищаем локальный кэш для категорий займа/возврата
+    const loanCatId = App.data.categories.find(c => c.name === 'Займ')?.id;
+    const returnCatId = App.data.categories.find(c => c.name === 'Возврат займа')?.id;
+    
+    if (loanCatId) {
+      const loanKey = `${loanCatId}:${weekStart}`;
+      delete App.data.facts[loanKey];
+      delete App.data.plans[loanKey];
+    }
+    
+    if (returnCatId) {
+      const returnKey = `${returnCatId}:${weekStart}`;
+      delete App.data.facts[returnKey];
+      delete App.data.plans[returnKey];
+    }
+    
+  } catch (e) {
+    console.error('Ошибка отката займа:', e);
+    throw e;
+  }
 }
 
 // Горячая клавиша Ctrl+Z — capture:true чтобы перехватить ДО input
@@ -3057,18 +3587,24 @@ function applyTheme(isDark) {
 
 async function toggleTheme() {
   const isDark = !document.body.classList.contains('dark');
+
+  // Просто переключаем класс — CSS сделает мягкий переход
   applyTheme(isDark);
+
   localStorage.setItem('cashflow-theme', isDark ? 'dark' : 'light');
 
-  // Сохраняем в настройки БД (visual_config)
-  if (App.data && App.data.settings) {
-    if (!App.data.settings.visual_config) App.data.settings.visual_config = {};
+  if (App.data?.settings) {
+    if (!App.data.settings.visual_config) {
+      App.data.settings.visual_config = {};
+    }
     App.data.settings.visual_config.theme = isDark ? 'dark' : 'light';
-    
+
     try {
-      await pywebview.api.save_settings({ visual_config: App.data.settings.visual_config });
-    } catch(e) {
-      console.error('Ошибка сохранения темы в БД', e);
+      await pywebview.api.save_settings({
+        visual_config: App.data.settings.visual_config
+      });
+    } catch (e) {
+      console.error('Ошибка сохранения темы', e);
     }
   }
 }

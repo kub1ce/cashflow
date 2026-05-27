@@ -801,12 +801,7 @@ class API:
     # ── Отмена возврата займа ─────────────────────────────────────────────────
     def undo_loan_repayment(self, data: dict) -> dict:
         """
-        Удаляет план займа на указанной неделе и ОДИН ближайший
-        план возврата займа (первый после week_start).
-        
-        Почему только один: без loan_group_id мы не знаем какие именно
-        планы возврата относятся к этому конкретному займу.
-        Удалять все — значит затронуть чужие займы.
+        Полностью удаляет займ и все связанные с ним возвраты (факты и планы).
         """
         db = SessionLocal()
         try:
@@ -822,31 +817,53 @@ class API:
 
             deleted_count = 0
 
-            # Удаляем план займа строго на указанной неделе
+            # ── Удаляем ВСЕ планы и факты займа на указанной неделе ──
             if loan_cat:
-                loan_plan = db.query(Plan).filter(
+                # Удаляем планы
+                loan_plans = db.query(Plan).filter(
                     and_(
                         Plan.category_id     == loan_cat.id,
                         Plan.week_start_date == week_start,
                     )
-                ).first()  # .first() вместо .all() — займ на неделе один
+                ).all()
+                for plan in loan_plans:
+                    db.delete(plan)
+                    deleted_count += 1
                 
-                if loan_plan:
-                    db.delete(loan_plan)
+                # Удаляем факты
+                loan_facts = db.query(Fact).filter(
+                    and_(
+                        Fact.category_id     == loan_cat.id,
+                        Fact.week_start_date == week_start,
+                    )
+                ).all()
+                for fact in loan_facts:
+                    db.delete(fact)
                     deleted_count += 1
 
-            # Удаляем ОДИН ближайший план возврата после week_start
-            # Сортируем по дате и берём первый — это возврат данного займа
+            # ── Удаляем ВСЕ планы и факты возврата займа после недели займа ──
+            # Ищем все возвраты которые начинаются с недели займа и позже
             if return_cat:
-                nearest_return = db.query(Plan).filter(
+                # Удаляем все планы возврата от этой недели вперёд
+                return_plans = db.query(Plan).filter(
                     and_(
                         Plan.category_id     == return_cat.id,
-                        Plan.week_start_date >= week_start,  # после недели займа
+                        Plan.week_start_date >= week_start,  # от недели займа и позже
                     )
-                ).order_by(Plan.week_start_date.asc()).first()  # только ближайший
+                ).all()
+                for plan in return_plans:
+                    db.delete(plan)
+                    deleted_count += 1
                 
-                if nearest_return:
-                    db.delete(nearest_return)
+                # Удаляем все факты возврата от этой недели вперёд
+                return_facts = db.query(Fact).filter(
+                    and_(
+                        Fact.category_id     == return_cat.id,
+                        Fact.week_start_date >= week_start,  # от недели займа и позже
+                    )
+                ).all()
+                for fact in return_facts:
+                    db.delete(fact)
                     deleted_count += 1
 
             db.commit()

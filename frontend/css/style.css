@@ -1344,10 +1344,6 @@ body.dark .week-dates {
   background: rgba(0,0,0,0.3) !important; 
 }
 
-body.dark .val-plan-income,
-body.dark .val-plan-expense { color: #94a3b8 !important; }
-body.dark .val-fact-expense { color: #e2e8f0 !important; }
-
 /* 3. Эмодзи-пикер */
 body.dark #emoji-picker-panel,
 body.dark [id^="emoji-picker-edit-panel-"] {
@@ -1831,4 +1827,12 @@ body.dark input[type="color"]::-webkit-color-swatch-wrapper {
 body.dark input[type="color"]::-webkit-color-swatch {
   border: 2px solid #0f172a;
   border-radius: 4px;
+}
+
+.total-income-value {
+  color: #16a34a !important;
+}
+
+.total-expense-value {
+  color: #ef4444 !important;
 }
