@@ -5,6 +5,7 @@ import json
 from datetime import date, timedelta
 
 from sqlalchemy import and_
+from sqlalchemy import text
 
 from app.database import SessionLocal
 from app.models import Settings, Account, Category, Plan, Fact
@@ -332,23 +333,39 @@ class API:
             categories = [self._cat_to_dict(c) for c in cats]
 
             plans_raw = db.query(Plan).all()
+            facts_raw = db.query(Fact).all()
+
             plans = {}
+            facts = {}
+            comments = {}
+
+            # ── Plans ─────────────────────────────
             for p in plans_raw:
                 key = f"{p.category_id}:{p.week_start_date}"
-                plans[key] = {'id': p.id, 'amount': p.amount}
+                plans[key] = {
+                    'id': p.id,
+                    'amount': p.amount,
+                }
 
-            facts_raw = db.query(Fact).all()
-            facts = {}
+                if p.comment:
+                    comments[key] = p.comment
+
+            # ── Facts ─────────────────────────────
             for f in facts_raw:
                 key = f"{f.category_id}:{f.week_start_date}"
+
                 if key not in facts:
                     facts[key] = []
+
                 facts[key].append({
                     'id':      f.id,
                     'amount':  f.amount,
                     'date':    f.date,
                     'comment': f.comment,
                 })
+
+                if f.comment:
+                    comments[key] = f.comment
 
             vc = json.loads(s.visual_config or '{}')
 
@@ -357,6 +374,7 @@ class API:
                 'categories':      categories,
                 'plans':           plans,
                 'facts':           facts,
+                'comments':        comments,
                 'initial_balance': a.initial_balance,  # a точно не None
                 'settings': {
                     'financial_strategy':  s.financial_strategy,
@@ -1079,6 +1097,7 @@ class API:
                             'week_start_date': p.week_start_date,
                             'week_end_date':   p.week_end_date,
                             'amount':          p.amount,
+                            'comment':         p.comment,
                         }
                         for p in plans
                     ],
@@ -1154,6 +1173,7 @@ class API:
                         week_start_date = p['week_start_date'],
                         week_end_date   = p['week_end_date'],
                         amount          = p['amount'],
+                        comment         = p.get('comment'),
                     ))
 
             for f in data.get('facts', []):
@@ -1404,3 +1424,55 @@ class API:
         finally:
             db.close()
 
+    # ── Сохранение комментария ─────────────────────────────
+    def save_cell_comment(self, data: dict) -> dict:
+        db = SessionLocal()
+        try:
+            category_id     = int(data['category_id'])
+            week_start_date = data['week_start_date']
+            week_end_date   = data.get('week_end_date')
+            comment         = data.get('comment')
+
+            print("SAVE COMMENT DATA:", data)
+
+            # Ищем факт
+            obj = db.query(Fact).filter(
+                and_(
+                    Fact.category_id     == category_id,
+                    Fact.week_start_date == week_start_date,
+                    Fact.external_id     == None,
+                )
+            ).first()
+
+            if not obj:
+                obj = db.query(Plan).filter(
+                    and_(
+                        Plan.category_id     == category_id,
+                        Plan.week_start_date == week_start_date,
+                    )
+                ).first()
+
+            if obj:
+                obj.comment = comment
+            else:
+                print("CREATING NEW PLAN FOR COMMENT")
+                new_plan = Plan(
+                    category_id     = category_id,
+                    week_start_date = week_start_date,
+                    week_end_date   = week_end_date,
+                    amount          = 0,
+                    comment         = comment
+                )
+                db.add(new_plan)
+
+            db.commit()
+            print("COMMENT SAVED OK")
+            return {'success': True}
+
+        except Exception as e:
+            print("SAVE COMMENT ERROR:", str(e))
+            db.rollback()
+            return {'success': False, 'error': str(e)}
+
+        finally:
+            db.close()

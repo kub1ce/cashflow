@@ -13,7 +13,7 @@ const App = {
   },
 };
 
-const CellComments = {};
+let CellComments = {};
 
 const Deficit = {
   weekStart: null,
@@ -201,6 +201,18 @@ function switchView(view) {
   if (view === 'settings') renderSettingsView();
 }
 
+// ── ГЛОБАЛЬНАЯ функция — вне renderTable ──────────────────────
+function refreshAllCommentIcons() {
+  // Удаляем все старые иконки
+  document.querySelectorAll('.comment-icon').forEach(el => el.remove());
+  
+  // Добавляем только для ячеек с реальным комментарием
+  Object.entries(CellComments).forEach(([key, comment]) => {
+    if (!comment) return;
+    updateCellCommentIcon(key);
+  });
+}
+
 // ══════════════════════════════════════════════════════════════
 // РЕНДЕР ТАБЛИЦЫ
 // ══════════════════════════════════════════════════════════════
@@ -307,6 +319,7 @@ function renderTable(data) {
     initial_balance, weekColor, cwColor,
     vc.negativeBalanceColor || '#f87171'
   ));
+  refreshAllCommentIcons();
 }
 
 // ── Секция-разделитель ─────────────────────────────────────────────────────────
@@ -472,7 +485,6 @@ function refreshCellContent(td, plans, facts) {
   // Если пусто — ничего не выводим (как в оригинале)
 
   td.innerHTML = `<div class="data-cell-inner">${html}</div>`;
-  updateCellCommentIcon(key);
 }
 
 // ── Inline редактор ────────────────────────────────────────────────────────────
@@ -592,13 +604,18 @@ function onOutsideClick(e) {
 function closeActiveCellEditor(cancel = false) {
   document.removeEventListener('click', onOutsideClick);
   const editor = document.getElementById('active-cell-editor');
-  if (editor) {
-    editor.remove();
-  }
+  if (editor) editor.remove();
+  
   if (cancel && App.editing.el) {
-    // Возвращаем ячейке прежний вид
+    const { categoryId, weekStart } = App.editing;
+    const key = `${categoryId}:${weekStart}`;  // ✅ Добавить эту строку
+    
+    // Сначала обновляем контент ячейки
     refreshCellContent(App.editing.el, App.data?.plans, App.data?.facts);
+    // Потом добавляем иконку комментария если есть
+    updateCellCommentIcon(key);
   }
+  
   App.editing = {
     categoryId: null, weekStart: null, weekEnd: null, mode: 'plan', el: null,
   };
@@ -1022,178 +1039,53 @@ function showCellContextMenu(td, event) {
   }, 0);
 }
 
-/**
- * Открывает диалог комментария
- */
-function openCellCommentDialog(key) {
-  // Закрываем контекстное меню
-  const menu = document.getElementById('cell-context-menu');
-  if (menu) menu.remove();
-  
-  const currentComment = CellComments[key] || '';
-  const isDark = document.body.classList.contains('dark');
-  
-  const dialog = document.createElement('div');
-  dialog.id = 'comment-dialog';
-  dialog.style.cssText = `
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    z-index: 10001;
-    backdrop-filter: blur(2px);
-  `;
-  
-  const content = document.createElement('div');
-  content.style.cssText = `
-    background: ${isDark ? '#334155' : '#ffffff'};
-    border-radius: 12px;
-    padding: 24px;
-    width: 90%;
-    max-width: 500px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    animation: modalIn 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
-  `;
-  
-  content.innerHTML = `
-    <h3 style="
-      font-size: 18px;
-      font-weight: 600;
-      margin-bottom: 16px;
-      color: ${isDark ? '#f1f5f9' : '#0f172a'};
-    ">Комментарий к ячейке</h3>
-    
-    <textarea id="comment-textarea"
-      placeholder="Введите комментарий..."
-      style="
-        width: 100%;
-        height: 120px;
-        border: 2px solid ${isDark ? '#475569' : '#e2e8f0'};
-        border-radius: 8px;
-        padding: 12px;
-        font-family: inherit;
-        font-size: 14px;
-        resize: none;
-        outline: none;
-        background: ${isDark ? '#1e293b' : '#f8fafc'};
-        color: ${isDark ? '#f1f5f9' : '#0f172a'};
-        box-sizing: border-box;
-      "
-      onkeydown="if(event.key==='Escape') closeCellCommentDialog()"
-    >${currentComment}</textarea>
-    
-    <div style="display: flex; gap: 12px; margin-top: 20px; justify-content: flex-end;">
-      <button id="comment-cancel"
-        style="
-          padding: 10px 20px;
-          background: ${isDark ? '#475569' : '#f1f5f9'};
-          color: ${isDark ? '#f1f5f9' : '#0f172a'};
-          border: 1px solid ${isDark ? '#64748b' : '#e2e8f0'};
-          border-radius: 8px;
-          cursor: pointer;
-          font-weight: 500;
-          transition: all 0.2s ease;
-          font-size: 14px;
-        ">
-        Отмена
-      </button>
-      <button id="comment-save"
-        style="
-          padding: 10px 20px;
-          background: #3b82f6;
-          color: white;
-          border: none;
-          border-radius: 8px;
-          cursor: pointer;
-          font-weight: 500;
-          transition: all 0.2s ease;
-          font-size: 14px;
-        ">
-        Сохранить
-      </button>
-    </div>
-  `;
-  
-  dialog.appendChild(content);
-  document.body.appendChild(dialog);
-  
-  // События
-  const textarea = document.getElementById('comment-textarea');
-  const cancelBtn = document.getElementById('comment-cancel');
-  const saveBtn = document.getElementById('comment-save');
-  
-  setTimeout(() => {
-    textarea.focus();
-  }, 100);
-  
-  // Закрыть при клике на оверлей
-  dialog.addEventListener('click', (e) => {
-    if (e.target === dialog) closeCellCommentDialog();
-  });
-  
-  // Кнопки
-  cancelBtn.addEventListener('click', closeCellCommentDialog);
-  saveBtn.addEventListener('click', () => saveCellComment(key));
-  
-  // Также закрываем при клике вне
-  setTimeout(() => {
-    document.addEventListener('click', function closeOnClickOutside(e) {
-      const currentDialog = document.getElementById('comment-dialog');
-      if (currentDialog && !currentDialog.contains(e.target)) {
-        closeCellCommentDialog();
-        document.removeEventListener('click', closeOnClickOutside);
-      }
-    });
-  }, 50);
-}
 
-/**
- * Сохраняет комментарий
- */
-function saveCellComment(key) {
+async function saveCellComment(key) {
   const textarea = document.getElementById('comment-textarea');
+  if (!textarea) return;
+
   const text = textarea.value.trim();
-  
-  if (text) {
-    CellComments[key] = text;
-    showToast('Комментарий сохранён', 'success');
-  } else {
-    delete CellComments[key];
-  }
-  
-  closeCellCommentDialog();
-  
-  // Обновляем иконку
   const [categoryId, weekStart] = key.split(':');
-  const td = document.querySelector(
-    `td[data-category-id="${categoryId}"][data-week-start="${weekStart}"]`
-  );
-  if (td) {
-    refreshCellContent(td, App.data.plans, App.data.facts);
-    updateCellCommentIcon(key);
-  }
-}
+  const week = App.data.weeks.find(w => w.week_start === weekStart);
 
-/**
- * Удаляет комментарий
- */
-function deleteCellComment(key) {
-  delete CellComments[key];
-  showToast('Комментарий удалён', 'success');
-  
-  // Закрываем меню
-  const menu = document.getElementById('cell-context-menu');
-  if (menu) menu.remove();
-  
-  // Обновляем иконку
-  const [categoryId, weekStart] = key.split(':');
+  // ✅ Получаем td ДО try-catch блока
   const td = document.querySelector(
     `td[data-category-id="${categoryId}"][data-week-start="${weekStart}"]`
   );
-  if (td) {
-    updateCellCommentIcon(key);
+
+  try {
+    const result = await pywebview.api.save_cell_comment({
+      category_id: parseInt(categoryId),
+      week_start_date: weekStart,
+      week_end_date: week.week_end,
+      comment: text || null
+    });
+
+    if (!result.success) {
+      showToast('Ошибка сохранения', 'error');
+      return;
+    }
+
+    if (text) {
+      CellComments[key] = text;
+      showToast('Комментарий сохранён', 'success');
+    } else {
+      delete CellComments[key];
+      showToast('Комментарий удалён', 'success');
+    }
+    
+    closeCellCommentDialog();
+
+    if (td) {
+      // Сначала перерисовываем контент ячейки
+      refreshCellContent(td, App.data.plans, App.data.facts);
+      // Потом добавляем иконку комментария
+      updateCellCommentIcon(key);
+    }
+
+  } catch (e) {
+    console.error("SAVE COMMENT ERROR:", e);
+    showToast('Ошибка соединения', 'error');
   }
 }
 
@@ -1266,51 +1158,33 @@ function updateCellCommentIcon(key) {
 }
 
 /**
- * Сохраняет комментарий
- */
-function saveCellComment(key) {
-  const textarea = document.getElementById('comment-textarea');
-  if (!textarea) return;
-  
-  const text = textarea.value.trim();
-  
-  if (text) {
-    CellComments[key] = text;
-    showToast('Комментарий сохранён', 'success');
-  } else {
-    delete CellComments[key];
-  }
-  
-  closeCellCommentDialog();
-  
-  // Обновляем иконку
-  const [categoryId, weekStart] = key.split(':');
-  const td = document.querySelector(
-    `td[data-category-id="${categoryId}"][data-week-start="${weekStart}"]`
-  );
-  if (td) {
-    updateCellCommentIcon(key);
-  }
-}
-
-/**
  * Удаляет комментарий
  */
-function deleteCellComment(key) {
-  delete CellComments[key];
-  showToast('Комментарий удалён', 'success');
-  
-  // Закрываем меню
-  const menu = document.getElementById('cell-context-menu');
-  if (menu) menu.remove();
-  
-  // Обновляем иконку
+async function deleteCellComment(key) {
   const [categoryId, weekStart] = key.split(':');
-  const td = document.querySelector(
-    `td[data-category-id="${categoryId}"][data-week-start="${weekStart}"]`
-  );
-  if (td) {
+
+  try {
+    const result = await pywebview.api.save_cell_comment({
+      category_id: parseInt(categoryId),
+      week_start_date: weekStart,
+      comment: null
+    });
+
+    if (!result.success) {
+      showToast('Ошибка удаления', 'error');
+      return;
+    }
+
+    delete CellComments[key];
+    showToast('Комментарий удалён', 'success');
+
+    const menu = document.getElementById('cell-context-menu');
+    if (menu) menu.remove();
+
     updateCellCommentIcon(key);
+
+  } catch (e) {
+    showToast('Ошибка соединения', 'error');
   }
 }
 
@@ -2871,6 +2745,7 @@ async function reloadData() {
     }
 
     App.data = data;
+    CellComments = data.comments || {};
 
     if (App.activeView === 'dashboard') {
       renderTable(data);

@@ -29,6 +29,7 @@ class Plan(Base):
     week_start_date = Column(String, nullable=False)
     week_end_date   = Column(String, nullable=False)
     amount          = Column(Float, nullable=False, default=0.0)
+    comment         = Column(Text, nullable=True)
 
 
 class Fact(Base):
