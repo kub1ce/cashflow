@@ -76,7 +76,7 @@ def main():
 
     api.set_window(window)
     api.set_frontend_dir(frontend_dir)
-    webview.start(debug=True)  # ! DEBUG HERE
+    webview.start(debug=False)  # ! DEBUG HERE
 
 
 if __name__ == '__main__':
