@@ -292,6 +292,8 @@ body.dark .td-sticky {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .data-cell:hover {
@@ -453,7 +455,7 @@ body.dark .cell-editor-tab:hover:not(.active) {
 .val-plan-expense {
   color: #64748b;
   font-weight: 500;
-  font-style: italic;
+  font-style: normal;
 }
 
 .val-fact-income {
@@ -464,6 +466,10 @@ body.dark .cell-editor-tab:hover:not(.active) {
 .val-fact-expense {
   font-weight: 700;
   color: #0f172a;
+}
+
+body.dark .val-fact-expense {
+  color: #e6a7a7 !important;  /* Светлый красный для видимости на тёмном фоне */
 }
 
 /* ── Итоговые строки ──────────────────────────────────── */
@@ -807,6 +813,8 @@ input[type=number]::-webkit-outer-spin-button {
   ══════════════════════════════════════════════════════════════ */
 
 #emoji-picker-panel {
+  position: absolute;
+  z-index: 50;
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
@@ -1415,9 +1423,11 @@ body.dark .balance-data-cell:hover {
    ЛЕВАЯ ГРАНИЦА
    ========================================================== */
 
-/* 1. Убираем системную левую границу у таблицы, чтобы она не уезжала при скролле */
+/* Убираем левую границу у первой колонки,
+   НО НЕ для строки Баланс */
 .cashflow-table th:first-child,
-.cashflow-table td:first-child {
+.cashflow-table td:first-child:not(.td-sticky),
+.cashflow-table tr:not(.row-balance) td:first-child {
   border-left: none !important;
   border-right: none !important;
 }
@@ -1426,6 +1436,13 @@ body.dark .balance-data-cell:hover {
 .th-sticky,
 .td-sticky {
   border-left: 1px solid #94a3b8 !important;
+  /* background-clip лечит баг WebKit с просвечиванием фона под рамкой */
+  background-clip: padding-box !important;
+}
+
+/* 2. Принудительно рисуем праву границу ПРЯМО НА закрепленных ячейках */
+.th-sticky,
+.td-sticky {
   border-right: 1px solid #94a3b8 !important;
   /* background-clip лечит баг WebKit с просвечиванием фона под рамкой */
   background-clip: padding-box !important;
@@ -1815,3 +1832,35 @@ body.dark input[type="color"] {
 body.dark input[type="color"]::-webkit-color-swatch {
   border-color: #0f172a; /* Рамка самого цвета в тёмной теме */
 }
+
+/* =========================================
+   REAL FIX: левая линия для строки Баланс
+   ========================================= */
+
+   #table-scroll-container {
+    position: relative;
+  }
+  
+  .row-balance {
+    position: sticky;
+    bottom: 0;
+    z-index: 50; /* выше чем обычные строки */
+  }
+  
+  .row-balance .td-sticky {
+    position: sticky;
+    left: 0;
+    z-index: 60;
+  }
+  
+  /* Рисуем линию поверх контейнера */
+  .row-balance .td-sticky::before {
+    content: "";
+    position: absolute;
+    left: -1px;   /* чуть влево чтобы перекрыть контейнер */
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #94a3b8;
+    pointer-events: none;
+  }

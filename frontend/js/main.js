@@ -421,6 +421,7 @@ function makeDataCell(cat, week, plans, facts, cwColor) {
   td.dataset.weekEnd    = week.week_end;
   td.dataset.catType    = cat.type;
   td.dataset.colorCode  = cat.color_code;
+  td.unselectable = 'on'; // ← добавь
 
   const isCurrent = isCurrentWeek(week.week_start, week.week_end);
   const isPast = isPastWeek(week.week_start, week.week_end);
@@ -431,24 +432,16 @@ function makeDataCell(cat, week, plans, facts, cwColor) {
     td.style.backgroundColor = PAST_WEEK_COLOR;
   }
 
-  const key = `${cat.id}:${week.week_start}`;
-  const hasPlan = !!(plans?.[key]?.amount);
-  const hasFact = !!(facts?.[key] && facts[key].length > 0);
+  td.style.userSelect = 'none';
+  td.style.webkitUserSelect = 'none';
 
-  if (hasPlan && !hasFact && !isPast) {
-    td.classList.add('has-plan');
-    if (isCurrent) {
-      td.classList.add('current-week');
-    }
-  }
-
-  refreshCellContent(td, plans, facts)
+  refreshCellContent(td, plans, facts);
 
   // Левый клик — открыть редактор
   td.addEventListener('click', e => {
     e.stopPropagation();
-    const key      = `${cat.id}:${week.week_start}`;
-    const hasFact  = !!(facts[key] && facts[key].length > 0);
+    const key     = `${cat.id}:${week.week_start}`;
+    const hasFact = !!(facts[key] && facts[key].length > 0);
     openCellEditor(td, hasFact ? 'fact' : 'plan');
   });
 
@@ -506,7 +499,11 @@ function refreshCellContent(td, plans, facts) {
   }
   // Если пусто — ничего не выводим (как в оригинале)
 
-  td.innerHTML = `<div class="data-cell-inner">${html}</div>`;
+  td.innerHTML = `<div class="data-cell-inner" style="
+    user-select: none;
+    -webkit-user-select: none;
+    pointer-events: none;
+  ">${html}</div>`;
 }
 
 // ── Inline редактор ────────────────────────────────────────────────────────────
@@ -569,8 +566,8 @@ function openCellEditor(td, initialMode) {
   document.body.appendChild(editor);
 
   const input = document.getElementById('cell-editor-input');
+  input.addEventListener('selectstart', e => e.preventDefault());
   input.focus();
-  input.select();
 
   // Назначаем события кнопкам
   editor.querySelector('.cell-editor-cancel').addEventListener('click', () => {
@@ -1236,6 +1233,17 @@ function openCellCommentDialog(key) {
   const oldDialog = document.getElementById('comment-dialog');
   if (oldDialog) oldDialog.remove();
   
+  const [categoryId, weekStart] = key.split(':');
+  const td = document.querySelector(
+    `td[data-category-id="${categoryId}"][data-week-start="${weekStart}"]`
+  );
+  
+  // Проверяем, пустая ли ячейка
+  if (td && !td.querySelector('.data-cell-inner')?.textContent?.trim()) {
+    showToast('Нельзя делать комментарии в пустой ячейке', 'error');
+    return;
+  }
+
   const currentComment = CellComments[key] || '';
   const isDark = document.body.classList.contains('dark');
   
@@ -2495,9 +2503,13 @@ function highlightWeekColumn(weekStart) {
   if (!th) return;
 
   const original = th.style.backgroundColor;
+  const isDark = document.body.classList.contains('dark');
+  
+  // Выбираем цвет в зависимости от темы
+  const highlightColor = isDark ? '#ef5350' : '#fca5a5';  // более яркий красный для темной, светлый для светлой
 
   th.style.transition = 'background-color 0.3s ease';
-  th.style.backgroundColor = '#fca5a5';
+  th.style.backgroundColor = highlightColor;
   th.classList.add('week-highlight');
 
   setTimeout(() => {
