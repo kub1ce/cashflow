@@ -1315,7 +1315,6 @@ body.dark select {
   background: #0f172a;
   border-color: #334155;
   color: #e2e8f0;
-  appearance: none;
 }
 
 body.dark .week-dates {
@@ -1684,28 +1683,6 @@ body.dark .text-rose-700 {
 
 body.dark .text-blue-700 {
   color: #60a5fa !important;
-}
-
-/* ===== FIX: dark select arrow ===== */
-
-select {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 12px;
-  padding-right: 36px; /* место под стрелку */
-}
-
-/* Светлая тема */
-body:not(.dark) select {
-  background-image: url("data:image/svg+xml;utf8,<svg fill='%23475569' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
-}
-
-/* Тёмная тема */
-body.dark select {
-  background-image: url("data:image/svg+xml;utf8,<svg fill='%23cbd5e1' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
 }
 
 /* ===== FIX: sticky header borders disappearing ===== */
