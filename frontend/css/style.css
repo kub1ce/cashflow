@@ -9,6 +9,13 @@ body {
   -webkit-app-region: no-drag;
 }
 
+:root {
+  --past-week-bg: #c7defc; /* Цвет прошедших недель для светлой темы */
+}
+body.dark {
+  --past-week-bg: #5f636c; /* Цвет прошедших недель для тёмной темы */
+}
+
 /* ══════════════════════════════════════════════════════════════
    SIDEBAR NAV
    ══════════════════════════════════════════════════════════════ */
@@ -43,16 +50,22 @@ body {
    ТАБЛИЦА
    ══════════════════════════════════════════════════════════════ */
 .cashflow-table {
-  border-collapse: collapse;
-  width: max-content;
-  min-width: 100%;
+  border-collapse: separate;
+  table-layout: auto;
+  isolation: isolate;
+  border-spacing: 0;
+  width: auto;
+  margin: 0;
+  padding: 0; 
 }
 
-/* Общие ячейки */
 .cashflow-table th,
 .cashflow-table td {
   border: 1px solid #94a3b8;
-  white-space: nowrap;
+}
+
+.cashflow-table th {
+  border-top: 1px solid #94a3b8;
 }
 
 /* ── Шапка ────────────────────────────────────────────────── */
@@ -71,21 +84,26 @@ body {
   position: sticky;
   left: 0;
   top: 0;
-  z-index: 30;
+  z-index: 80;
   background: #f1f5f9;
   width: 256px;
   min-width: 256px;
   text-align: left;
+  white-space: nowrap;
+}
+
+/* Тёмная тема */
+body.dark .th-sticky {
+  background: #0f172a;
 }
 
 /* Ячейки недель в шапке */
 .th-week {
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: 30;
   text-align: center;
   min-width: 110px;
-  width: 110px;
   padding: 8px 4px;
 }
 
@@ -122,11 +140,6 @@ body {
   background: linear-gradient(135deg, #b3becc 0%) !important;
 }
 
-/* Переход при наведении */
-.data-cell.has-plan:hover {
-  background: #b3becc !important;
-}
-
 .data-cell.has-plan.current-week:hover {
   background: linear-gradient(135deg, #b3becc 0%) !important;
 }
@@ -135,11 +148,16 @@ body {
 .td-sticky {
   position: sticky;
   left: 0;
-  z-index: 10;
+  z-index: 40;
   background: white;
   width: 256px;
   min-width: 256px;
   border-right: 1px solid #94a3b8;
+}
+
+/* Тёмная тема */
+body.dark .td-sticky {
+  background: #1e293b;
 }
 
 /* ── Секция-разделитель ───────────────────────────────────── */
@@ -178,6 +196,7 @@ body {
 /* ── Строки категорий ─────────────────────────────────────── */
 .row-category {
   cursor: default;
+  left: 0;
 }
 
 .row-category:hover td {
@@ -200,6 +219,7 @@ body {
   padding: 10px 16px;
   height: 44px;
   gap: 8px;
+  left: 0;
 }
 
 .cat-name-left {
@@ -265,48 +285,51 @@ body {
 }
 
 /* ── Ячейки данных ────────────────────────────────────────── */
+/* Переносим ховер на саму ячейку (td) */
 .data-cell {
-  padding: 0;
-  text-align: right;
-  position: relative;
-  min-width: 110px;
-  width: 110px;
-}
-
-.data-cell-inner {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 6px 8px;
-  min-height: 44px;
   cursor: pointer;
-  font-variant-numeric: tabular-nums;
-  font-size: 13px;
+  transition: background 0.15s, filter 0.15s;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.data-cell-inner:hover {
-  background: #f1f5f9;
+.data-cell:hover {
+  background: #f1f5f9 !important;
+}
+
+body.dark .data-cell:hover {
+  background: #263248 !important;
 }
 
 /* Inline editor */
 .cell-editor {
-  position: absolute;
-  inset: 0;
+  /* position и inset удалены — задаются в JS как fixed */
   background: white;
-  z-index: 100;
   display: flex;
   flex-direction: column;
   padding: 5px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
   border: 1.5px solid #93c5fd;
   border-radius: 6px;
   gap: 4px;
-  min-width: 130px;
+
+/* КЛЮЧЕВЫЕ ПАРАМЕТРЫ */
+  width: 140px !important;  /* Фиксированная ширина */
+  min-width: 140px !important;
+  max-width: 140px !important;
+  }
+
+/* Тёмная тема */
+body.dark .cell-editor {
+  background: #1e293b;
+  border-color: #3b82f6;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.8);
 }
 
 .cell-editor-tabs {
   display: flex;
-  background: #f1f5f9;
+  background: transparent;
   border-radius: 5px;
   padding: 2px;
   gap: 2px;
@@ -316,7 +339,7 @@ body {
   flex: 1;
   cursor: pointer;
   border: none;
-  background: transparent;
+  background: #e5e7eb;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -329,13 +352,31 @@ body {
 }
 
 .cell-editor-tab.active {
-  background: white;
-  color: #2563eb;
+  background: #2563eb;
+  color: white;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .cell-editor-tab:hover:not(.active) {
   color: #475569;
+  background: #f1f5f9;
+}
+
+/* Тёмная тема */
+body.dark .cell-editor-tab {
+  background: #475569;
+  color: #94a3b8;
+}
+
+body.dark .cell-editor-tab.active {
+  background: #3b82f6;
+  color: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+body.dark .cell-editor-tab:hover:not(.active) {
+  background: #64748b;
+  color: white;
 }
 
 .cell-editor input {
@@ -425,14 +466,14 @@ body {
   color: #0f172a;
 }
 
-/* ── Итоговые строки ──────────────────────────────────────── */
+/* ── Итоговые строки ──────────────────────────────────── */
 .row-total td {
-  background: #f8fafc;
   font-weight: 700;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   padding: 6px 8px;
   border-color: #94a3b8;
+  /* background НЕ задаём — он придёт из JS инлайн-стилем */
 }
 
 .row-total .td-sticky {
@@ -444,6 +485,12 @@ body {
   padding: 6px 16px;
 }
 
+/* Тёмная тема */
+body.dark .row-total .td-sticky {
+  background: #162032;
+  color: #94a3b8;
+}
+
 /* ── Строка баланса (sticky bottom) ──────────────────────── */
 .row-balance td {
   color: white;
@@ -453,6 +500,8 @@ body {
   padding: 6px 8px;
   border-color: rgba(255,255,255,0.3);
   isolation: isolate;
+  opacity: 1;
+  border: 1px solid #94a3b8 !important;
 }
 
 .row-balance .td-sticky {
@@ -686,13 +735,6 @@ body {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   МОДАЛЬНЫЕ ОКНА
-   ══════════════════════════════════════════════════════════════ */
-.modal-show {
-  display: flex !important;
-}
-
-/* ══════════════════════════════════════════════════════════════
    TOAST
    ══════════════════════════════════════════════════════════════ */
 #app-toast {
@@ -723,11 +765,6 @@ input[type=number]::-webkit-outer-spin-button {
   position: sticky;
   bottom: 0;
   z-index: 25;
-}
-
-.row-balance td {
-  /* Явный непрозрачный фон — задаётся через JS */
-  opacity: 1 !important;
 }
 
 /* Кнопки режима автозаполнения */
@@ -1005,4 +1042,816 @@ input[type=number]::-webkit-outer-spin-button {
 .win-btn svg {
   width: 10px;
   height: 10px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SCROLLBARS (полосы прокрутки)
+   ══════════════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 9999px;
+  border: 2px solid #e2e8f0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: #475569;
+}
+
+::-webkit-scrollbar-corner {
+  background: #e2e8f0;
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+/* Кнопка переключения темы */
+.title-bar-theme-btn {
+  height: 32px;
+  padding: 0 10px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background 0.15s;
+  -webkit-app-region: no-drag;
+  flex-shrink: 0;
+}
+
+.title-bar-theme-btn:hover {
+  color: #f1f5f9;
+  background: rgba(255,255,255,0.08);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DARK THEME
+   ══════════════════════════════════════════════════════════════ */
+
+body.dark {
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+/* Sidebar */
+body.dark aside {
+  background: #020617;
+}
+
+body.dark aside .border-b {
+  border-color: #1e293b;
+}
+
+/* Header */
+body.dark header {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+body.dark #view-title {
+  color: #f1f5f9;
+}
+
+/* Date picker */
+body.dark #date-picker {
+  background: #0f172a;
+  border-color: #3b82f6;
+  color: #e2e8f0;
+  color-scheme: dark;
+}
+
+body.dark #date-picker:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+/* Main area */
+body.dark main {
+  background: #0f172a;
+}
+
+/* Таблица — обёртка */
+body.dark .flex-1.m-4 {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+body.dark .flex.justify-end.items-center.p-3 {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+/* Таблица */
+body.dark .cashflow-table {
+  background: #1e293b;
+}
+
+body.dark .cashflow-table th,
+body.dark .cashflow-table td {
+  border-color: #334155;
+}
+
+body.dark .cashflow-table thead th {
+  background: #0f172a;
+  color: #94a3b8;
+}
+
+body.dark .th-sticky {
+  background: #0f172a;
+}
+
+body.dark .td-sticky {
+  background: #1e293b;
+}
+
+body.dark .row-category:hover td {
+  background: #263248;
+}
+
+body.dark .row-category:hover .td-sticky {
+  background: #263248;
+}
+
+body.dark .cat-name-text {
+  color: #cbd5e1;
+}
+
+body.dark .row-section.income-section td {
+  background: rgba(6,78,59,0.2);
+}
+
+body.dark .row-section.expense-section td {
+  background: rgba(127,29,29,0.2);
+}
+
+body.dark .data-cell.has-plan {
+  background: #2d3f55 !important;
+}
+
+body.dark .data-cell-inner:hover {
+  background: #263248;
+}
+
+body.dark .autofill-btn {
+  background: #263248;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+/* Settings */
+body.dark #view-settings {
+  background: #0f172a;
+}
+
+body.dark .settings-section {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+body.dark .settings-section h2 {
+  color: #94a3b8;
+}
+
+body.dark .settings-input {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+body.dark .settings-input:focus {
+  border-color: #3b82f6;
+}
+
+body.dark .settings-select {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+body.dark .settings-cat-item {
+  background: #0f172a;
+  border-color: #1e293b;
+}
+
+body.dark .settings-cat-item:hover {
+  background: #162032;
+}
+
+body.dark .settings-icon-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #64748b;
+}
+
+body.dark .settings-cat-edit-input {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+/* Scrollbar в тёмной теме */
+body.dark ::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+body.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-color: #1e293b;
+}
+
+body.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+body.dark ::-webkit-scrollbar-corner {
+  background: #1e293b;
+}
+
+/* Модалки */
+body.dark .bg-white {
+  background: #1e293b !important;
+}
+
+body.dark .bg-slate-50 {
+  background: #162032 !important;
+}
+
+body.dark .border-slate-100,
+body.dark .border-slate-200 {
+  border-color: #334155 !important;
+}
+
+body.dark .text-slate-800,
+body.dark .text-slate-700 {
+  color: #e2e8f0 !important;
+}
+
+body.dark .text-slate-600,
+body.dark .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+body.dark input[type=date],
+body.dark input[type=number],
+body.dark input[type=text],
+body.dark select {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e2e8f0;
+  appearance: none;
+}
+
+body.dark .week-dates {
+  background: rgba(0,0,0,0.25);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ИСПРАВЛЕНИЯ ТЁМНОЙ ТЕМЫ (ПЕРЕОПРЕДЕЛЕНИЕ ИНЛАЙН СТИЛЕЙ)
+   ══════════════════════════════════════════════════════════════ */
+
+/* 1. Цветные пикеры в настройках */
+body.dark .color-picker-wrap {
+  background: #0f172a;
+  border-color: #334155;
+}
+body.dark .color-picker-wrap:hover {
+  border-color: #3b82f6;
+}
+body.dark .color-picker-value {
+  color: #cbd5e1;
+}
+
+/* 2. Текст в таблице (перебиваем инлайн-цвета из JS) */
+body.dark .week-number { color: #94a3b8 !important; }
+body.dark .week-dates { 
+  color: #e2e8f0 !important; 
+  background: rgba(0,0,0,0.3) !important; 
+}
+
+body.dark .val-plan-income,
+body.dark .val-plan-expense { color: #94a3b8 !important; }
+body.dark .val-fact-expense { color: #e2e8f0 !important; }
+
+/* 3. Эмодзи-пикер */
+body.dark #emoji-picker-panel,
+body.dark [id^="emoji-picker-edit-panel-"] {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important;
+}
+body.dark .emoji-btn {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+body.dark .emoji-btn:hover {
+  background: #334155 !important;
+  border-color: #475569 !important;
+}
+body.dark .emoji-tab,
+body.dark .emoji-tab-edit {
+  color: #94a3b8 !important;
+}
+body.dark .emoji-tab.active,
+body.dark .emoji-tab-edit.active {
+  color: #3b82f6 !important;
+}
+
+/* Фикс скроллбара внутри эмодзи-пикера */
+body.dark #emoji-grid::-webkit-scrollbar-track,
+body.dark [class^="emoji-edit-grid-"]::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+body.dark #emoji-grid::-webkit-scrollbar-thumb,
+body.dark [class^="emoji-edit-grid-"]::-webkit-scrollbar-thumb {
+  background: #475569 !important;
+  border-color: #1e293b !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ПРАВКИ ИНТЕРФЕЙСА (Ширина, Итоги, Ховер)
+   ══════════════════════════════════════════════════════════════ */
+
+/* 1. Ширина эмодзи-пикера (убираем нижний скролл) */
+#emoji-picker-panel,
+[id^="emoji-picker-edit-panel-"] {
+  width: 440px !important;
+}
+
+/* Ховер для ячеек, у которых есть свой цвет (План, Текущая неделя, Прошедшие) */
+.data-cell.has-plan:hover { background: #9cb5d1 !important; }
+body.dark .data-cell.has-plan:hover { background: #374b63 !important; }
+
+/* Универсальное затемнение/осветление цветных ячеек (баланс, текущая неделя) */
+.data-cell[style*="background-color"]:hover,
+.balance-data-cell:hover {
+  filter: brightness(0.95);
+}
+body.dark .data-cell[style*="background-color"]:hover,
+body.dark .balance-data-cell:hover {
+  filter: brightness(1.15);
+}
+
+.flex-1.min-h-0 {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+#table-scroll-container {
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+/* ==========================================================
+   ЛЕВАЯ ГРАНИЦА
+   ========================================================== */
+
+/* 1. Убираем системную левую границу у таблицы, чтобы она не уезжала при скролле */
+.cashflow-table th:first-child,
+.cashflow-table td:first-child {
+  border-left: none !important;
+  border-right: none !important;
+}
+
+/* 2. Принудительно рисуем левую границу ПРЯМО НА закрепленных ячейках */
+.th-sticky,
+.td-sticky {
+  border-left: 1px solid #94a3b8 !important;
+  /* background-clip лечит баг WebKit с просвечиванием фона под рамкой */
+  background-clip: padding-box !important;
+}
+
+/* 2. Принудительно рисуем праву границу ПРЯМО НА закрепленных ячейках */
+.th-sticky,
+.td-sticky {
+  border-right: 1px solid #94a3b8 !important;
+  /* background-clip лечит баг WebKit с просвечиванием фона под рамкой */
+  background-clip: padding-box !important;
+}
+
+/* 3. Фикс для строк-секций (+ДОХОДЫ / -РАСХОДЫ) */
+.row-section td {
+  border-left: none !important;
+}
+
+.row-section .section-label {
+  /* Вешаем границу на сам прилипающий блок */
+  border-left: 1px solid #94a3b8 !important; 
+  background-clip: padding-box !important;
+  
+  /* Делаем блок такой же ширины, как и вся колонка (чтобы закрыть дырку) */
+  width: 256px !important;
+  min-width: 256px !important;
+  display: block !important;
+  box-sizing: border-box !important;
+}
+
+/* 4. ТЁМНАЯ ТЕМА для этих границ */
+body.dark .th-sticky,
+body.dark .td-sticky,
+body.dark .row-section .section-label {
+  border-left-color: #334155 !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ДОПОЛНЕНИЯ
+   ══════════════════════════════════════════════════════════════ */
+
+/* 1. Убираем резкую белую рамку у выбора цветов в настройках (Dark Theme) */
+body.dark input[type="color"] {
+  border: 1px solid #334155 !important;
+  background-color: #1e293b !important;
+  border-radius: 4px;
+  padding: 2px;
+  cursor: pointer;
+  height: 36px; /* Чтобы выглядели аккуратно в один ряд */
+}
+
+body.dark input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+body.dark input[type="color"]::-webkit-color-swatch {
+  border: 1px solid #0f172a; /* Темная обводка самого квадратика цвета */
+  border-radius: 2px;
+}
+
+/* 2. Делаем кнопки "СОХРАНИТЬ" и "ДОБАВИТЬ" более видимыми в тёмной теме */
+
+/* Улучшаем кнопку Сохранить (предполагается, что это .btn-settings-primary) */
+body.dark .btn-settings-primary {
+  background: #2563eb !important; /* Синий акцент вместо сливающегося темного */
+  border: 1px solid #1d4ed8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+body.dark .btn-settings-primary:hover {
+  background: #3b82f6 !important;
+  border-color: #60a5fa !important;
+}
+
+/* Стилизуем кнопку "ДОБАВИТЬ" (та, что справа от поля "Название") 
+   Если у нее в HTML нет класса, вам нужно добавить ей class="btn-settings-add" */
+.btn-settings-add {
+  padding: 8px 16px;
+  background: transparent;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: 2px solid #2563eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  height: 38px; /* Выравнивание по высоте с инпутами */
+}
+.btn-settings-add:hover {
+  background: #eff6ff;
+}
+
+body.dark .btn-settings-add {
+  color: #60a5fa;
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.1);
+}
+body.dark .btn-settings-add:hover {
+  background: rgba(59, 130, 246, 0.25);
+  color: #ffffff;
+}
+
+/* 3. Выравнивание значений в таблице по правому краю */
+
+/* Для обычных ячеек с данными */
+.cashflow-table .data-cell {
+  text-align: right !important; /* Сдвигаем вправо */
+  padding-right: 12px !important; /* Даем отступ, чтобы цифры не прилипали к рамке */
+}
+
+/* Для строк итогов (доходы/расходы) */
+.row-total td:not(.td-sticky) {
+  text-align: right !important;
+  padding-right: 12px !important;
+}
+
+/* Для строки баланса */
+.row-balance td:not(.td-sticky) .balance-cell-inner {
+  justify-content: flex-end !important; /* Сдвигаем контент флексбокса вправо */
+  padding-right: 4px;
+}
+
+/* 4. Кнопки Экспорт и Импорт (Адаптация под тёмную тему) */
+/* Кнопка "Экспорт JSON" (Светлая по умолчанию) */
+body.dark .btn-settings-secondary {
+  background: #1e293b !important; /* Темный фон, в тон панелям */
+  color: #e2e8f0 !important;      /* Светло-серый текст */
+  border: 1px solid #475569 !important; /* Заметная граница */
+}
+body.dark .btn-settings-secondary:hover {
+  background: #334155 !important; /* Чуть светлее при наведении */
+  border-color: #64748b !important;
+  color: #ffffff !important;
+}
+
+/* Кнопка "Импорт JSON" (Синяя) */
+body.dark .btn-settings-blue {
+  background: #2563eb !important; 
+  border: 1px solid #1d4ed8 !important; /* Добавляем рамку для четкости */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+body.dark .btn-settings-blue:hover {
+  background: #3b82f6 !important;
+  border-color: #60a5fa !important;
+}
+
+
+/* 5. Возвращаем границы для строки Остаток (Баланс) */
+/* В вашем коде стоял border-color: rgba(255,255,255,0.3) — из-за этого 
+   сетка сливалась с фоном. Приравниваем её к общим границам таблицы. */
+
+/* Для тёмной темы */
+body.dark .row-balance td {
+  border: 1px solid #334155 !important;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   СТИЛИЗАЦИЯ НАТИВНОГО КАЛЕНДАРЯ
+   ══════════════════════════════════════════════════════════════ */
+
+/* Для светлой темы (на всякий случай) */
+input[type="date"] {
+  accent-color: #2563eb; /* Фирменный синий цвет приложения */
+}
+
+/* Для тёмной темы */
+body.dark input[type="date"] {
+  color-scheme: dark;
+  accent-color: #3b82f6; /* Чуть более светлый синий для контраста в тёмной теме */
+}
+
+/* ===== FIX: Autofill / Deficit modals in dark theme ===== */
+
+body.dark .bg-slate-50 {
+  background: #162032 !important;
+}
+
+body.dark .border-slate-200 {
+  border-color: #334155 !important;
+}
+
+body.dark .border-slate-100 {
+  border-color: #334155 !important;
+}
+
+body.dark .text-slate-700 {
+  color: #e2e8f0 !important;
+}
+
+body.dark .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+
+body.dark button.bg-white {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+
+/* ===== FIX: mode buttons in dark theme ===== */
+
+body.dark .af-mode-btn,
+body.dark .def-mode-btn {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+body.dark .af-mode-btn:hover,
+body.dark .def-mode-btn:hover {
+  background: #263248 !important;
+  border-color: #3b82f6 !important;
+  color: #60a5fa !important;
+}
+
+body.dark .af-mode-btn.active,
+body.dark .def-mode-btn.active {
+  background: #1e3a8a !important;
+  border-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+/* ===== FIX: deficit preview blocks in dark theme ===== */
+
+body.dark .bg-rose-50 {
+  background: #3b1f27 !important;
+}
+
+body.dark .border-rose-100 {
+  border-color: #5b2c36 !important;
+}
+
+body.dark .bg-blue-50 {
+  background: #1c2f4a !important;
+}
+
+body.dark .border-blue-100 {
+  border-color: #2a4365 !important;
+}
+
+body.dark .text-rose-500 {
+  color: #f87171 !important;
+}
+
+body.dark .text-rose-700 {
+  color: #fca5a5 !important;
+}
+
+body.dark .text-blue-700 {
+  color: #60a5fa !important;
+}
+
+/* ===== FIX: dark select arrow ===== */
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px;
+  padding-right: 36px; /* место под стрелку */
+}
+
+/* Светлая тема */
+body:not(.dark) select {
+  background-image: url("data:image/svg+xml;utf8,<svg fill='%23475569' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+}
+
+/* Тёмная тема */
+body.dark select {
+  background-image: url("data:image/svg+xml;utf8,<svg fill='%23cbd5e1' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+}
+
+/* ===== FIX: sticky header borders disappearing ===== */
+
+/* Явная верхняя граница */
+.cashflow-table thead th {
+  border-top: 1px solid #94a3b8 !important;
+}
+
+/* В тёмной теме */
+body.dark .cashflow-table thead th {
+  border-top: 1px solid #334155 !important;
+}
+
+.th-week::after,
+.th-sticky::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: #94a3b8;
+  pointer-events: none;
+}
+
+body.dark .th-week::after,
+body.dark .th-sticky::after {
+  background: #334155;
+}
+
+body.dark .bg-white { background: #1e293b !important; }
+body.dark .text-slate-800 { color: #e2e8f0 !important; }
+
+/* ══════════════════════════════════════════════════════════════
+   DARK THEME — WIZARD
+   ══════════════════════════════════════════════════════════════ */
+
+body.dark {
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+/* Header + Footer */
+body.dark header,
+body.dark footer {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+body.dark #step-header-title {
+  color: #f1f5f9;
+}
+
+/* Inputs */
+body.dark .wizard-input {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+body.dark .wizard-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+}
+
+body.dark .wizard-label {
+  color: #94a3b8;
+}
+
+/* Strategy cards */
+body.dark .strategy-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+body.dark .strategy-card:hover {
+  background: #263248;
+  border-color: #3b82f6;
+}
+
+body.dark .strategy-card.active {
+  background: #1e3a8a;
+  border-color: #3b82f6;
+}
+
+body.dark .strategy-card-title {
+  color: #f1f5f9;
+}
+
+body.dark .strategy-card-desc {
+  color: #94a3b8;
+}
+
+/* Category cards */
+body.dark .cat-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+body.dark .cat-card:hover {
+  background: #263248;
+}
+
+body.dark .cat-card.selected {
+  background: #1e3a8a;
+  border-color: #3b82f6;
+}
+
+body.dark .cat-check {
+  border-color: #475569;
+}
+
+/* Back button */
+body.dark .btn-back {
+  background: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+body.dark .btn-back:hover {
+  background: #263248;
+}
+
+/* Error banner */
+body.dark .error-banner {
+  background: #3b1f27;
+  border-color: #5b2c36;
+  color: #fca5a5;
+}
+
+/* Темная тема — нормальный вид color picker */
+body.dark input[type="color"] {
+  background: #1e293b !important;
+  border: 1px solid #334155 !important;
+  padding: 0;
+  height: 40px;
+}
+
+/* Убираем белую рамку Safari */
+body.dark input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+  background: transparent;
+}
+
+body.dark input[type="color"]::-webkit-color-swatch {
+  border: 2px solid #0f172a;
+  border-radius: 4px;
 }

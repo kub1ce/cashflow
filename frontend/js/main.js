@@ -45,7 +45,7 @@ function getSavingCategoryName(catId) {
   return SAVING_CATEGORIES.includes(cat.name) ? cat.name : null;
 }
 
-const PAST_WEEK_COLOR = '#c7defc';
+const PAST_WEEK_COLOR = 'var(--past-week-bg)';
 
 // ══════════════════════════════════════════════════════════════
 // УТИЛИТЫ
@@ -78,13 +78,13 @@ function isPastWeek(weekStart, weekEnd) {
 }
 
 function evalAmount(str) {
-  try {
-    const sanitized = str.replace(/,/g, '.').replace(/[^0-9+\-*/().]/g, '');
-    if (!sanitized) return 0;
-    return Number(new Function(`return ${sanitized}`)()) || 0;
-  } catch {
-    return 0;
-  }
+  if (!str) return 0;
+
+  const cleaned = str.replace(/,/g, '.').trim();
+
+  if (!/^-?\d+(\.\d+)?$/.test(cleaned)) return 0;
+
+  return Number(cleaned) || 0;
 }
 
 function getVisualConfig() {
@@ -205,7 +205,7 @@ function switchView(view) {
 
 function renderTable(data) {
   const { weeks, categories, plans, facts, initial_balance } = data;
-  const vc = data.settings.visual_config || {};
+  const vc = data.settings?.visual_config || {};
 
   const thead = document.getElementById('table-head');
   const tbody = document.getElementById('table-body');
@@ -336,29 +336,35 @@ function makeCategoryRow(cat, weeks, plans, facts, cwColor) {
   tr.addEventListener('dragend',   onDragEnd);
 
   // Левая ячейка
-  const tdName = document.createElement('td');
-  tdName.className = 'td-sticky';
+const tdName = document.createElement('td');
+tdName.className = 'td-sticky';
 
-  const isIncome = cat.type === 'income';
-  tdName.innerHTML = `
-    <div class="cat-name-cell">
-      <div class="cat-name-left">
-        <span class="cat-color-dot"
-              style="background:${cat.color_code || '#94a3b8'}"></span>
-        <span class="cat-name-text" title="${cat.name}">${cat.name}</span>
-      </div>
-      <button class="autofill-btn ${isIncome ? 'income' : 'expense'}"
-              title="Автозаполнение плана"
-              onclick="openAutofill(event, ${cat.id})">
-        <svg width="13" height="13" fill="none" viewBox="0 0 24 24"
-             stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0
-               0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357
-               2H15"/>
-        </svg>
-      </button>
-    </div>`;
+const isIncome = cat.type === 'income';
+
+tdName.innerHTML = `
+  <div class="cat-name-cell">
+    <div class="cat-name-left">
+      <span class="cat-color-dot"
+            style="background:${cat.color_code || '#94a3b8'}"></span>
+      <span class="cat-name-text" title="${cat.name}">${cat.name}</span>
+    </div>
+    <button class="autofill-btn ${isIncome ? 'income' : 'expense'}"
+            title="Автозаполнение плана">
+      <svg width="13" height="13" fill="none" viewBox="0 0 24 24"
+           stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0
+             0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357
+             2H15"/>
+      </svg>
+    </button>
+  </div>`;
+
+  const btn = tdName.querySelector('.autofill-btn');
+  btn.addEventListener('click', (e) => {
+    openAutofill(e, cat.id);
+  });
+
   tr.appendChild(tdName);
 
   // Ячейки данных
@@ -389,7 +395,7 @@ function makeDataCell(cat, week, plans, facts, cwColor) {
   }
 
   const key = `${cat.id}:${week.week_start}`;
-  const hasPlan = !!(plans?.[key]);
+  const hasPlan = !!(plans?.[key]?.amount);
   const hasFact = !!(facts?.[key] && facts[key].length > 0);
 
   // Добавляем класс если есть только план (нет факта) - только для НЕ прошедших недель
@@ -487,8 +493,18 @@ function openCellEditor(td, initialMode) {
   const editor = document.createElement('div');
   editor.className = 'cell-editor';
   editor.id        = 'active-cell-editor';
+  
+  // Получаем позицию ячейки ДО добавления в body
+  const rect = td.getBoundingClientRect();
 
-  // ВАЖНО: блокируем всплытие клика, чтобы ячейка таблицы не переоткрывала редактор
+  // Позиционируем как fixed
+  editor.style.position = 'fixed';
+  editor.style.top    = `${rect.top}px`;
+  editor.style.left   = `${rect.left}px`;
+  editor.style.minWidth = '130px';
+  editor.style.zIndex = '9999';
+
+  // Блокируем всплытие клика
   editor.addEventListener('click', e => e.stopPropagation());
 
   editor.innerHTML = `
@@ -513,8 +529,7 @@ function openCellEditor(td, initialMode) {
       <button type="button" class="cell-editor-confirm">ОК</button>
     </div>`;
 
-  td.style.position = 'relative';
-  td.appendChild(editor);
+  document.body.appendChild(editor);
 
   const input = document.getElementById('cell-editor-input');
   input.focus();
@@ -815,13 +830,14 @@ function makeTotalRow(type, label, weeks, typeCats, plans, facts, color, cwColor
     const isCurrent = isCurrentWeek(week.week_start, week.week_end);
     const isPast = isPastWeek(week.week_start, week.week_end);
     
+    // ПРАВИЛЬНОЕ ПРИСВАИВАНИЕ ЦВЕТОВ
     if (isCurrent) {
       td.style.backgroundColor = cwColor;
     } else if (isPast) {
-      td.style.backgroundColor = PAST_WEEK_COLOR; // Серый для прошедших
+      td.style.backgroundColor = PAST_WEEK_COLOR;
     } else {
-      if (type === 'income') td.style.background = 'rgba(236,253,245,0.3)';
-      if (type === 'expense') td.style.background = 'rgba(255,241,242,0.3)';
+      // Для будущих недель — ПРОЗРАЧНЫЙ (цвет таблицы)
+      td.style.backgroundColor = 'transparent';
     }
 
     let total = 0;
@@ -846,6 +862,7 @@ function makeTotalRow(type, label, weeks, typeCats, plans, facts, color, cwColor
 
   return tr;
 }
+
 
 // ── Строка баланса ─────────────────────────────────────────────────────────────
 function makeBalanceRow(weeks, categories, plans, facts, initialBalance,
@@ -1506,7 +1523,7 @@ async function renderSettingsView() {
     return;
   }
 
-  const vc = settings.visual_config || {};
+  const vc = settings?.visual_config || {};
 
   let warningHtml = '';
   if (App.data && App.data.weeks && App.data.weeks.length > 0) {
@@ -1909,8 +1926,6 @@ async function saveMainSettings() {
     });
     if (result.success) {
       showToast('Настройки сохранены', 'success');
-      await reloadData();
-      // Переключаемся на таблицу чтобы пользователь сразу увидел изменения
       switchView('dashboard');
       location.reload();
     } else {
@@ -2035,7 +2050,8 @@ function scrollToWeek(dateStr, highlight = false) {
 
   if (!container || !th) return;
 
-  const STICKY_WIDTH     = 257;
+  const sticky = document.querySelector('.th-sticky');
+  const STICKY_WIDTH = sticky ? sticky.offsetWidth : 250;
   const targetScrollLeft = th.offsetLeft - STICKY_WIDTH;
 
   container.scrollTo({
@@ -2124,18 +2140,18 @@ function showConfirm(title, subtitle = '') {
 
 function showModal(id) {
   const el = document.getElementById(id);
-  if (el) {
-    el.classList.remove('hidden');
-    el.classList.add('modal-show');
-  }
+  if (!el) return;
+
+  el.classList.remove('hidden');
+  el.classList.add('flex');
 }
 
 function hideModal(id) {
   const el = document.getElementById(id);
-  if (el) {
-    el.classList.remove('modal-show');
-    el.classList.add('hidden');
-  }
+  if (!el) return;
+
+  el.classList.remove('flex');
+  el.classList.add('hidden');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -2287,22 +2303,65 @@ async function handleToggleMaximize() {
   });
 })();
 
+// ══════════════════════════════════════════════════════════════
+// WINDOW CONTROL BUTTONS (minimize / maximize / close)
+// ══════════════════════════════════════════════════════════════
+
+function initWindowControls() {
+  const btnMin = document.getElementById('btn-minimize');
+  const btnMax = document.getElementById('btn-maximize');
+  const btnClose = document.getElementById('btn-close');
+
+  // MINIMIZE
+  btnMin?.addEventListener('click', async () => {
+    try {
+      if (!window.pywebview?.api?.minimize_window) return;
+      await pywebview.api.minimize_window();
+    } catch (e) {
+      console.error('Ошибка minimize:', e);
+    }
+  });
+
+  // MAXIMIZE / RESTORE
+  btnMax?.addEventListener('click', async () => {
+    try {
+      if (!window.pywebview?.api?.toggle_maximize) return;
+      await handleToggleMaximize();
+    } catch (e) {
+      console.error('Ошибка maximize:', e);
+    }
+  });
+
+  // CLOSE
+  btnClose?.addEventListener('click', async () => {
+    try {
+      if (!window.pywebview?.api?.close_window) return;
+      await pywebview.api.close_window();
+    } catch (e) {
+      console.error('Ошибка close:', e);
+    }
+  });
+}
+
 
 // ══════════════════════════════════════════════════════════════
 // ЗАГРУЗКА ДАННЫХ
 // ══════════════════════════════════════════════════════════════
 
 async function reloadData() {
+  const loader = document.getElementById('loader');
+  loader?.classList.remove('hidden');
+
   try {
-    const timeoutPromise = new Promise((_, reject) => 
+    const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Timeout')), 10000)
     );
-    
+
     const data = await Promise.race([
       pywebview.api.get_cashflow_data(),
       timeoutPromise
     ]);
-    
+
     if (data.error) {
       console.error('Ошибка данных:', data.error);
       showToast('Ошибка загрузки данных', 'error');
@@ -2310,17 +2369,39 @@ async function reloadData() {
     }
 
     App.data = data;
-    
+
     if (App.activeView === 'dashboard') {
       renderTable(data);
     }
+
   } catch (e) {
     console.error('Ошибка загрузки:', e);
-    showToast('Не удалось загрузить данные. Перезагрузите страницу.', 'error'); // ✅ Добавить toast
+    showToast('Не удалось загрузить данные. Перезагрузите страницу.', 'error');
+  } finally {
+    loader?.classList.add('hidden');
   }
 }
 
+// ══════════════════════════════════════════════════════════════
+// ЗАГРУЗКА ДАННЫХ И ИНИЦИАЛИЗАЦИЯ
+// ══════════════════════════════════════════════════════════════
+
 async function init() {
+  // 1. Узнаем тему из URL (то, что передал Python)
+  const href = window.location.href;
+  const savedTheme = localStorage.getItem('cashflow-theme');
+
+  if (href.includes('theme=dark')) {
+    applyTheme(true);
+  } else if (href.includes('theme=light')) {
+    applyTheme(false);
+  } else if (savedTheme) {
+    applyTheme(savedTheme === 'dark');
+  } else {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    applyTheme(prefersDark);
+  }
+
   await new Promise(resolve => {
     if (window.pywebview) resolve();
     else window.addEventListener('pywebviewready', resolve, { once: true });
@@ -2343,7 +2424,17 @@ async function init() {
     });
   }
 
+  // 2. Загружаем все данные из базы (Python)
   await reloadData();
+
+  // 3. Подтверждаем тему из БД
+  if (App.data && App.data.settings && App.data.settings.visual_config) {
+    const dbTheme = App.data.settings.visual_config.theme;
+    if (dbTheme) {
+      applyTheme(dbTheme === 'dark');
+      localStorage.setItem('cashflow-theme', dbTheme); 
+    }
+  }
 
   // Загружаем название счёта в title bar
   try {
@@ -2354,7 +2445,7 @@ async function init() {
     }
   } catch (e) { /* ignore */ }
 
-  //Проверка текущей даты
+  // Проверка текущей даты
   if (App.data && App.data.weeks && App.data.weeks.length > 0) {
     const firstWeek = App.data.weeks[0];
     const lastWeek = App.data.weeks[App.data.weeks.length - 1];
@@ -2366,9 +2457,14 @@ async function init() {
     }
   }
 
+  // Прокрутка к текущей неделе
   setTimeout(() => scrollToWeek(today), 150);
 
+  // Скрываем лоадер
   document.getElementById('loader').classList.add('hidden');
+
+  initWindowControls();
+  initSidebarNavigation();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -2406,7 +2502,6 @@ async function undoLastAction() {
     UndoHistory.push(action);
   } finally {
     _undoInProgress = false;
-    setTimeout(() => { _undoInProgress = false; }, 5000);
   }
 }
 
@@ -2719,18 +2814,20 @@ function closeEmojiPicker(e) {
 
 function insertEmoji(emoji) {
   const input = document.getElementById('s-new-cat-name');
-  const cursorPos = input.selectionStart;
+  if (!input) return;
+
+  const cursorPos = input.selectionStart ?? input.value.length;
   const text = input.value;
-  
-  const newText = text.slice(0, cursorPos) + emoji + text.slice(cursorPos);
-  input.value = newText;
-  
+
+  input.value = text.slice(0, cursorPos) + emoji + text.slice(cursorPos);
+
   input.focus();
   input.setSelectionRange(cursorPos + emoji.length, cursorPos + emoji.length);
-  
+
   document.getElementById('emoji-picker-panel').classList.add('hidden');
   document.removeEventListener('click', closeEmojiPicker);
 }
+
 
 
 // ══════════════════════════════════════════════════════════════
@@ -2935,6 +3032,63 @@ function insertEmojiForEdit(emoji, catId) {
 
   // Закрываем пикер после выбора
   closeAllEditEmojiPickers();
+}
+
+// ══════════════════════════════════════════════════════════════
+// ТЁМНАЯ ТЕМА
+// ══════════════════════════════════════════════════════════════
+
+function applyTheme(isDark) {
+  document.body.classList.toggle('dark', isDark);
+
+  const sun  = document.getElementById('theme-icon-sun');
+  const moon = document.getElementById('theme-icon-moon');
+
+  if (isDark) {
+    sun?.classList.add('hidden');
+    moon?.classList.remove('hidden');
+    document.getElementById('btn-theme').title = 'Светлая тема';
+  } else {
+    sun?.classList.remove('hidden');
+    moon?.classList.add('hidden');
+    document.getElementById('btn-theme').title = 'Тёмная тема';
+  }
+}
+
+async function toggleTheme() {
+  const isDark = !document.body.classList.contains('dark');
+  applyTheme(isDark);
+  localStorage.setItem('cashflow-theme', isDark ? 'dark' : 'light');
+
+  // Сохраняем в настройки БД (visual_config)
+  if (App.data && App.data.settings) {
+    if (!App.data.settings.visual_config) App.data.settings.visual_config = {};
+    App.data.settings.visual_config.theme = isDark ? 'dark' : 'light';
+    
+    try {
+      await pywebview.api.save_settings({ visual_config: App.data.settings.visual_config });
+    } catch(e) {
+      console.error('Ошибка сохранения темы в БД', e);
+    }
+  }
+}
+
+function initSidebarNavigation() {
+  const btnDashboard = document.getElementById('nav-dashboard');
+  const btnSettings  = document.getElementById('nav-settings');
+  const btnReconcile = document.getElementById('btn-reconcile');
+
+  btnDashboard?.addEventListener('click', () => {
+    switchView('dashboard');
+  });
+
+  btnSettings?.addEventListener('click', () => {
+    switchView('settings');
+  });
+
+  btnReconcile?.addEventListener('click', () => {
+    openReconcileModal();
+  });
 }
 
 init();

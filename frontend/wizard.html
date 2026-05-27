@@ -17,8 +17,22 @@
     }
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="css/style.css"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
         rel="stylesheet">
+        <script>
+          (function() {
+            try {
+              var theme = localStorage.getItem('cashflow-theme');
+        
+              if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+              } else {
+                document.documentElement.classList.remove('dark');
+              }
+            } catch (e) {}
+          })();
+        </script>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -384,6 +398,35 @@
       </button> -->
 
       <div></div>
+      
+      <!-- Тёмная тема -->
+      <button class="title-bar-theme-btn"
+      onclick="toggleTheme()"
+      id="btn-theme"
+      title="Переключить тему">
+      <svg id="theme-icon-sun" viewBox="0 0 24 24"
+      fill="none" stroke="currentColor"
+      stroke-width="2" width="14" height="14">
+      <circle cx="12" cy="12" r="5"/>
+      <path stroke-linecap="round"
+        d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42
+          M18.36 18.36l1.42 1.42M1 12h2
+          M21 12h2M4.22 19.78l1.42-1.42
+          M18.36 5.64l1.42-1.42"/>
+      </svg>
+      <svg id="theme-icon-moon"
+      viewBox="0 0 24 24"
+      fill="none" stroke="currentColor"
+      stroke-width="2"
+      width="14" height="14"
+      class="hidden">
+      <path stroke-linecap="round"
+        stroke-linejoin="round"
+        d="M21 12.79A9 9 0 1111.21 3
+          7 7 0 0021 12.79z"/>
+      </svg>
+      </button>
+
 
       <!-- Свернуть -->
       <button class="win-btn" onclick="pywebview.api.minimize_window()" title="Свернуть">

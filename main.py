@@ -1,11 +1,12 @@
 import webview
 import os
 import sys
-import threading
 
-from app.database import init_db, SessionLocal, APP_DIR
+from app.database import init_db, SessionLocal
 from app.models import Settings
 from app.api import API
+from urllib.parse import urljoin
+from urllib.request import pathname2url
 
 
 def get_frontend_dir() -> str:
@@ -19,13 +20,31 @@ def get_frontend_dir() -> str:
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'frontend')
 
 
-def get_start_page() -> str:
+def get_start_page(frontend_dir: str) -> tuple:
     db = SessionLocal()
     try:
         settings = db.query(Settings).first()
+
+        # Если нет настроек или не выбран старт периода → wizard
         if not settings or not settings.planning_start_date:
-            return 'wizard.html'
-        return 'index.html'
+            wizard_path = os.path.join(frontend_dir, 'wizard.html')
+            if os.path.exists(wizard_path):
+                return 'wizard.html', 'light'
+            return 'index.html', 'light'
+        
+        # Читаем тему прямо из БД перед запуском окна
+        theme = 'light'
+        if settings.visual_config:
+            vc = settings.visual_config
+            # SQLAlchemy может вернуть dict или JSON-строку
+            if isinstance(vc, str):
+                import json
+                try: vc = json.loads(vc)
+                except: vc = {}
+            if isinstance(vc, dict):
+                theme = vc.get('theme', 'light')
+                
+        return 'index.html', theme
     finally:
         db.close()
 
@@ -35,10 +54,10 @@ def main():
     init_db()
 
     frontend_dir = get_frontend_dir()
-    start_page   = get_start_page()
+    start_page, theme = get_start_page(frontend_dir)
 
     start_path = os.path.join(frontend_dir, start_page)
-    start_url  = 'file:///' + start_path.replace('\\', '/')
+    start_url = urljoin('file:', pathname2url(start_path)) + f'#theme={theme}'
 
     api = API()
 

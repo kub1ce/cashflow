@@ -420,6 +420,33 @@ async function initWindowResize() {
   }
 }
 
+// ══════════════════════════════════════════════════════════════
+// ТЁМНАЯ ТЕМА (Wizard)
+// ══════════════════════════════════════════════════════════════
+
+function toggleTheme() {
+  const isDark =
+    !document.documentElement.classList.contains('dark');
+
+  document.documentElement.classList.toggle('dark', isDark);
+  document.body.classList.toggle('dark', isDark); // ← ВАЖНО
+
+  localStorage.setItem(
+    'cashflow-theme',
+    isDark ? 'dark' : 'light'
+  );
+
+  const sun  = document.getElementById('theme-icon-sun');
+  const moon = document.getElementById('theme-icon-moon');
+
+  if (isDark) {
+    sun?.classList.add('hidden');
+    moon?.classList.remove('hidden');
+  } else {
+    sun?.classList.remove('hidden');
+    moon?.classList.add('hidden');
+  }
+}
 
 // ══════════════════════════════════════════════════════════════
 // ИНИЦИАЛИЗАЦИЯ
@@ -431,6 +458,29 @@ document.addEventListener('DOMContentLoaded', async function() {
   
   // Инициализируем resize
   await initWindowResize();
+
+  // Определяем тему
+  const href = window.location.href;
+  const savedTheme = localStorage.getItem('cashflow-theme');
+
+  if (href.includes('theme=dark')) {
+    applyTheme(true);
+  } else if (href.includes('theme=light')) {
+    applyTheme(false);
+  } else if (savedTheme) {
+    applyTheme(savedTheme === 'dark');
+  } else {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    applyTheme(prefersDark);
+  }
+
+  const btn = document.getElementById('btn-theme');
+  if (btn) {
+    btn.textContent =
+      document.body.classList.contains('dark')
+        ? '☀️'
+        : '🌙';
+  }
 
   // Устанавливаем понедельник текущей недели
   const today = new Date();
@@ -445,6 +495,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   document.getElementById('period-start').value =
     `${year}-${month}-${dayNum}`;
 
+    
   // Показываем первый шаг
   updateUI(1);
 });
