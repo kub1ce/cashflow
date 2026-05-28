@@ -59,7 +59,11 @@ function formatAmount(value) {
 }
 
 function getTodayISO() {
-  return new Date().toISOString().split('T')[0];
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function getMondayOf(dateStr) {
@@ -473,7 +477,6 @@ function refreshCellContent(td, plans, facts) {
 
   td.classList.remove('has-plan', 'current-week');
   
-  // Если есть только план (нет факта) — добавляем серый фон
   if (isPlan && !isFact) {
     td.classList.add('has-plan');
     const isCurrent = isCurrentWeek(td.dataset.weekStart, td.dataset.weekEnd);
@@ -483,27 +486,55 @@ function refreshCellContent(td, plans, facts) {
   }
 
   let html = '';
+  let indicatorHtml = '';
 
   if (isFact) {
-    if (catType === 'income') {
-      html = `<span class="val-fact-income"
-                    style="color:${colorCode || '#10b981'}">
-                ${formatAmount(factTotal)}
-              </span>`;
-    } else {
-      html = `<span class="val-fact-expense">${formatAmount(factTotal)}</span>`;
+    if (factArr.length > 1) {
+      indicatorHtml = `<span class="fact-multiple-indicator" title="${factArr.length} операции">x${factArr.length}</span>`;
     }
+
+    // БАЗОВЫЙ ФАКТ
+    let factColor = (catType === 'income') ? (colorCode || '#10b981') : 'inherit';
+    let factClass = (catType === 'income') ? 'val-fact-income' : 'val-fact-expense';
+    let factDisplay = `<span class="${factClass}" style="color:${factColor}; display:block; line-height:1.2;">${formatAmount(factTotal)}</span>`;
+
+    // ЕСЛИ ЕСТЬ И ПЛАН, И ФАКТ — добавляем подпись снизу
+    if (isPlan) {
+      let isOverBudget = false;
+      // Для расходов перерасход — это когда факт > плана. Для доходов — когда факт < плана.
+      if (catType === 'expense' && factTotal > planAmt) isOverBudget = true;
+      if (catType === 'income' && factTotal < planAmt) isOverBudget = true;
+
+      // Цвет подписи (если всё ок - серый, если перерасход - красный/оранжевый)
+      let subTextColor = isOverBudget ? '#ef4444' : '#94a3b8';
+      let prefix = catType === 'expense' ? 'из' : 'цель:';
+
+      factDisplay += `
+        <span style="display:block; font-size:9.5px; color:${subTextColor}; font-weight:600; line-height:1; margin-top:2px;">
+          ${prefix} ${formatAmount(planAmt)}
+        </span>
+      `;
+    }
+
+    html = factDisplay;
+
   } else if (isPlan) {
     const cls = catType === 'income' ? 'val-plan-income' : 'val-plan-expense';
     html = `<span class="${cls}">${formatAmount(planAmt)}</span>`;
   }
-  // Если пусто — ничего не выводим (как в оригинале)
 
+  td.style.position = 'relative';
+  
+  // Добавили flex-direction: column; чтобы факт и план выстроились друг под другом
   td.innerHTML = `<div class="data-cell-inner" style="
-    user-select: none;
-    -webkit-user-select: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
     pointer-events: none;
-  ">${html}</div>`;
+  ">
+    ${html}
+    ${indicatorHtml}
+  </div>`;
 }
 
 // ── Inline редактор ────────────────────────────────────────────────────────────
@@ -513,98 +544,184 @@ function openCellEditor(td, initialMode) {
   const catId     = parseInt(td.dataset.categoryId);
   const weekStart = td.dataset.weekStart;
   const weekEnd   = td.dataset.weekEnd;
-  const key       = `${catId}:${weekStart}`;
-  const plan      = App.data.plans[key];
-  const factArr   = App.data.facts[key];
-  const factTotal = factArr ? factArr.reduce((s, f) => s + f.amount, 0) : 0;
-
+  
   App.editing = { categoryId: catId, weekStart, weekEnd, mode: initialMode, el: td };
 
-  let initVal = '';
-  if (initialMode === 'fact' && factTotal) initVal = factTotal.toString();
-  else if (initialMode === 'plan' && plan) initVal = plan.amount.toString();
-
   const editor = document.createElement('div');
-  editor.className = 'cell-editor';
+  editor.className = `cell-editor mode-${initialMode}`;
   editor.id        = 'active-cell-editor';
   
-  // Получаем позицию ячейки ДО добавления в body
   const rect = td.getBoundingClientRect();
-
-  // Позиционируем как fixed
   editor.style.position = 'fixed';
   editor.style.top    = `${rect.top}px`;
   editor.style.left   = `${rect.left}px`;
-  editor.style.minWidth = '130px';
   editor.style.zIndex = '9999';
 
-  // Блокируем всплытие клика
   editor.addEventListener('click', e => e.stopPropagation());
 
+  // Базовый каркас окна
   editor.innerHTML = `
     <div class="cell-editor-tabs">
-      <button class="cell-editor-tab ${initialMode === 'plan' ? 'active' : ''}" data-mode="plan" type="button">
-        План
-      </button>
-      <button class="cell-editor-tab ${initialMode === 'fact' ? 'active' : ''}" data-mode="fact" type="button">
-        Факт
-      </button>
+      <button class="cell-editor-tab ${initialMode === 'plan' ? 'active' : ''}" data-mode="plan" type="button">План</button>
+      <button class="cell-editor-tab ${initialMode === 'fact' ? 'active' : ''}" data-mode="fact" type="button">Факт</button>
     </div>
-    <input
-      id="cell-editor-input"
-      type="text"
-      value="${initVal}"
-      autocomplete="off"
-      placeholder="0"
-      oninput="this.value = this.value.replace(/[^0-9.,+-]/g, '')"
-    />
-    <div class="cell-editor-actions">
-      <button type="button" class="cell-editor-cancel">✕</button>
-      <button type="button" class="cell-editor-confirm">ОК</button>
-    </div>`;
+    <div id="cell-editor-body"></div>
+  `;
 
   document.body.appendChild(editor);
 
-  const input = document.getElementById('cell-editor-input');
-  input.addEventListener('selectstart', e => e.preventDefault());
-  input.focus();
-
-  // Назначаем события кнопкам
-  editor.querySelector('.cell-editor-cancel').addEventListener('click', () => {
-    closeActiveCellEditor(true);
-  });
-  
-  editor.querySelector('.cell-editor-confirm').addEventListener('click', () => {
-    saveCellEditor();
-  });
-
-  // Переключение вкладок без потери введённого значения
+  // Переключение вкладок
   editor.querySelectorAll('.cell-editor-tab').forEach(btn => {
     btn.addEventListener('click', (e) => {
       App.editing.mode = e.target.dataset.mode;
+      editor.className = `cell-editor mode-${App.editing.mode}`;
       editor.querySelectorAll('.cell-editor-tab').forEach(t => t.classList.remove('active'));
       e.target.classList.add('active');
-      input.focus(); // Возвращаем фокус в поле ввода
+      renderEditorBody(); // Перерисовываем внутренности
     });
   });
 
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter')  { e.preventDefault(); saveCellEditor(); }
-    if (e.key === 'Escape') { e.preventDefault(); closeActiveCellEditor(true); }
-    if (isUndoShortcut(e)) {
-      e.preventDefault();
-      e.stopPropagation();
-      undoLastAction();
-    }
-  });
+  renderEditorBody(); // Первичная отрисовка
 
-  // Клик вне редактора — закрываем БЕЗ сохранения
-// Клик вне редактора — закрываем БЕЗ сохранения
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       document.addEventListener('click', onOutsideClick);
     });
   });
+}
+
+let _isSavingFact = false; // ← Блокиратор спама
+
+async function addNewFact() {
+  if (_isSavingFact) return; // ← Выходим, если уже сохраняем
+  
+  const dateInput = document.getElementById('new-fact-date').value;
+  const amtInput = document.getElementById('new-fact-amount');
+  const amount = evalAmount(amtInput.value);
+  const { categoryId, weekStart, weekEnd, el } = App.editing;
+
+  if (amount <= 0) {
+    showToast('Введите сумму больше нуля', 'error');
+    if (typeof Anim !== 'undefined') Anim.shakeEditor();
+    return;
+  }
+
+  _isSavingFact = true; // ← Включаем блокировку
+  const btn = document.querySelector('.fact-btn-primary');
+  if(btn) btn.disabled = true;
+
+  try {
+    const res = await pywebview.api.add_fact_transaction({
+      category_id: categoryId, week_start: weekStart, week_end: weekEnd, 
+      amount: amount, date: dateInput
+    });
+
+    if (res.success) {
+      UndoHistory.push({
+        type: 'ADD_FACT',
+        factIds: res.fact_ids, 
+        timestamp: Date.now(),
+      });
+      
+      await reloadData(true); 
+      
+      if (el) {
+        refreshCellContent(el, App.data.plans, App.data.facts);
+        updateCellCommentIcon(`${categoryId}:${weekStart}`);
+        recalcTotalsAndBalance();
+        if (typeof Anim !== 'undefined') Anim.flashCellSaved(el);
+      }
+      
+      renderEditorBody(true); 
+      
+      amtInput.value = '';
+      amtInput.focus();
+      
+    } else {
+      showToast(res.error, 'error');
+      if (typeof Anim !== 'undefined') Anim.shakeEditor();
+    }
+  } catch (e) {
+    showToast('Ошибка связи', 'error');
+  } finally {
+    _isSavingFact = false; // ← Снимаем блокировку
+    if(btn) btn.disabled = false;
+  }
+}
+
+// ── Удаление транзакции ──
+async function deleteFact(factId) {
+  const itemEl = document.getElementById(`fact-item-${factId}`);
+  if (itemEl) {
+    itemEl.style.animationDelay = '0ms'; 
+    itemEl.classList.add('fact-item-exit');
+    await new Promise(r => setTimeout(r, 200)); 
+  }
+
+  try {
+    const res = await pywebview.api.delete_fact_transaction({ fact_id: factId });
+    if (res.success) {
+      UndoHistory.push({
+        type: 'DELETE_FACT',
+        deletedData: res.deleted_data,
+        timestamp: Date.now(),
+      });
+      
+      await reloadData(true); 
+      
+      const { el, categoryId, weekStart } = App.editing;
+      if (el) {
+        refreshCellContent(el, App.data.plans, App.data.facts);
+        updateCellCommentIcon(`${categoryId}:${weekStart}`); 
+        recalcTotalsAndBalance(); 
+        if (typeof Anim !== 'undefined') Anim.flashCellSaved(el);
+      }
+      
+      renderEditorBody(true); // ← ТИХОЕ ОБНОВЛЕНИЕ СПИСКА
+    }
+  } catch (e) {
+    showToast('Ошибка связи', 'error');
+    renderEditorBody(true); 
+  }
+}
+
+// ── Сохранение измененной суммы ──
+async function saveEditFact(factId) {
+  const input = document.getElementById(`edit-fact-input-${factId}`);
+  const amount = evalAmount(input.value);
+
+  if (amount <= 0) {
+    showToast('Сумма должна быть больше нуля', 'error');
+    if (typeof Anim !== 'undefined') Anim.shakeEditor();
+    return;
+  }
+
+  try {
+    const res = await pywebview.api.update_fact_transaction({ fact_id: factId, amount: amount });
+    if (res.success) {
+      UndoHistory.push({
+        type: 'EDIT_FACT',
+        factId: factId,
+        oldAmount: res.old_amount,
+        newAmount: amount,
+        timestamp: Date.now()
+      });
+      
+      await reloadData(true); 
+      
+      const { el, categoryId, weekStart } = App.editing;
+      if (el) {
+        refreshCellContent(el, App.data.plans, App.data.facts);
+        updateCellCommentIcon(`${categoryId}:${weekStart}`);
+        recalcTotalsAndBalance();
+        if (typeof Anim !== 'undefined') Anim.flashCellSaved(el);
+      }
+      
+      renderEditorBody(true); // ← ТИХОЕ ОБНОВЛЕНИЕ СПИСКА
+    }
+  } catch (e) {
+    showToast('Ошибка связи', 'error');
+  }
 }
 
 function onOutsideClick(e) {
@@ -642,105 +759,78 @@ function closeActiveCellEditor(cancel = false) {
 
 async function saveCellEditor() {
   const input = document.getElementById('cell-editor-input');
+  
+  // Если инпута нет (например, мы на вкладке ФАКТ), просто выходим.
+  // Хотя сюда мы и так не должны попадать с вкладки ФАКТ.
   if (!input) return;
 
   const amount    = evalAmount(input.value);
   const { categoryId, weekStart, weekEnd, mode, el } = App.editing;
 
+  // Проверка на отрицательное значение
   if (amount < 0) {
     showToast('Сумма не может быть отрицательной', 'error');
+    if (el && typeof Anim !== 'undefined') Anim.flashCellError(el);
+    // Восстанавливаем ячейку, если ввод некорректный
     refreshCellContent(el, App.data.plans, App.data.facts);
     return;
   }
 
-  // Снимаем редактор
+  // Закрываем и удаляем окно редактора
   const editor = document.getElementById('active-cell-editor');
   if (editor) editor.remove();
 
   if (!categoryId || !weekStart) return;
 
-  // ── ПРОВЕРКА КОПИЛКИ ──────────────────────────────────────
-  // ВСЕ факты по копилочным категориям ведём только через save_paired_saving
-  if (mode === 'fact') {
-    const savingName = getSavingCategoryName(categoryId);
-    if (savingName) {
-      try {
-        await pywebview.api.save_paired_saving({
-          category_id:     categoryId,
-          week_start_date: weekStart,
-          week_end_date:   weekEnd,
-          amount,
-        });
-
-        showToast('Операция с копилкой выполнена', 'success');
-        await reloadData();
-        return; // дальше не идём, чтобы не вызвать save_cell второй раз
-      } catch (e) {
-        console.error('Ошибка save_paired_saving:', e);
-        showToast('Ошибка сохранения операции копилки', 'error');
-        await reloadData();
-        return;
-      }
-    }
-  }
-  // ─────────────────────────────────────────────────────────
-
   const key = `${categoryId}:${weekStart}`;
   
-  // Сохраняем старое значение
-  const oldValue = mode === 'plan' 
-    ? App.data.plans[key]?.amount || 0
-    : (App.data.facts[key] ? App.data.facts[key].reduce((s,f)=>s+f.amount,0) : 0);
+  // Сохраняем старое значение для Ctrl+Z
+  const oldValue = App.data.plans[key]?.amount || 0;
 
-  // Оптимистичное обновление локального кэша
-  if (mode === 'plan') {
-    if (amount === 0) {
-      delete App.data.plans[key];
-    } else {
-      App.data.plans[key] = { amount };
-    }
+  // 1. Оптимистичное обновление локального кэша (чтобы мгновенно показать в UI)
+  if (amount === 0) {
+    delete App.data.plans[key];
   } else {
-    if (amount === 0) {
-      delete App.data.facts[key];
-    } else {
-      App.data.facts[key] = [{ amount, date: getTodayISO(), comment: null }];
-    }
+    App.data.plans[key] = { amount };
   }
 
+  // Обновляем саму ячейку и возвращаем иконку комментария (если была)
   if (el) {
     refreshCellContent(el, App.data.plans, App.data.facts);
     updateCellCommentIcon(key);
   }
 
-  // Пересчитываем итоги и баланс
+  // Пересчитываем Итоги и строку Баланса
   recalcTotalsAndBalance();
 
-  // Добавляем в историю
+  // Добавляем действие в историю для Ctrl+Z
   UndoHistory.push({
     type: ACTION_TYPES.CELL_EDIT,
     categoryId,
     weekStart,
     weekEnd,
-    mode,
+    mode: 'plan', // Принудительно 'plan', так как функция теперь только для плана
     oldValue,
     newValue: amount,
     timestamp: Date.now(),
   });
 
+  // Очищаем состояние
   App.editing = { categoryId: null, weekStart: null, weekEnd: null, mode: 'plan', el: null };
 
-  // Сохраняем в БД
+  // 2. Отправляем сохранение плана на бэкенд
   try {
     await pywebview.api.save_cell({
       category_id:     categoryId,
       week_start_date: weekStart,
       week_end_date:   weekEnd,
       amount,
-      mode,
+      mode: 'plan',
     });
   } catch (e) {
-    console.error('Ошибка сохранения:', e);
+    console.error('Ошибка сохранения плана:', e);
     showToast('Ошибка сохранения', 'error');
+    // Если произошла ошибка бэка, загружаем реальные данные обратно
     await reloadData();
   }
 }
@@ -2263,19 +2353,101 @@ async function saveCategoryName(catId) {
   }
 }
 
+// ── Обновление цвета категории ──────────────────────────────
 async function updateCategoryColor(catId, colorValue, inputEl) {
-  // Обновляем кружок сразу
+  // 1. Мгновенно обновляем кружок в настройках
   const dot = inputEl.previousElementSibling;
   if (dot) dot.style.background = colorValue;
 
+  // 2. Мгновенно обновляем кружок в таблице (левый столбец)
+  const tableRow = document.querySelector(
+    `tr[data-category-id="${catId}"] .cat-color-dot`
+  );
+  if (tableRow) tableRow.style.background = colorValue;
+
+  // 3. Мгновенно обновляем dataset во всех ячейках этой категории
+  document.querySelectorAll(
+    `td[data-category-id="${catId}"]`
+  ).forEach(td => {
+    td.dataset.colorCode = colorValue;
+  });
+
+  // 4. Обновляем в App.data чтобы не было рассинхрона
+  if (App.data) {
+    const cat = App.data.categories.find(c => c.id === catId);
+    if (cat) cat.color_code = colorValue;
+  }
+
+  // 5. Перерисовываем только ячейки этой категории (не всю таблицу!)
+  document.querySelectorAll(
+    `td.data-cell[data-category-id="${catId}"]`
+  ).forEach(td => {
+    refreshCellContent(td, App.data?.plans, App.data?.facts);
+  });
+
+  // 6. Сохраняем в БД
   try {
     await pywebview.api.update_category(catId, { color_code: colorValue });
-    await reloadData();
   } catch (e) {
     showToast('Ошибка обновления цвета', 'error');
   }
 }
 
+// ── Добавление категории ─────────────────────────────────────
+async function submitAddCategorySettings() {
+  const nameInput = document.getElementById('s-new-cat-name');
+  const name = nameInput?.value.trim();
+  const type = document.getElementById('s-new-cat-type')?.value;
+
+  if (!name) { showToast('Введите название категории', 'error'); return; }
+
+  try {
+    const result = await pywebview.api.add_category({
+      name,
+      type,
+      color_code: type === 'income' ? '#10b981' : '#f43f5e',
+    });
+
+    if (result.success) {
+      nameInput.value = '';
+      showToast(`Категория «${name}» добавлена`, 'success');
+
+      // Перезагружаем данные (silent — не трогаем таблицу)
+      await reloadData(true);
+
+      // Точечно перерисовываем только список категорий в настройках
+      if (App.activeView === 'settings' && App.data) {
+        const allCats = App.data.categories;
+
+        const incomeContainer = document.getElementById('s-income-cats');
+        const expenseContainer = document.getElementById('s-expense-cats');
+
+        if (incomeContainer) {
+          renderSettingsCategoryList(
+            allCats.filter(c => c.type === 'income'),
+            incomeContainer
+          );
+        }
+        if (expenseContainer) {
+          renderSettingsCategoryList(
+            allCats.filter(c => c.type === 'expense'),
+            expenseContainer
+          );
+        }
+      }
+
+      // Таблицу перерисовываем полностью — новая категория должна появиться
+      if (App.data) renderTable(App.data);
+
+    } else {
+      showToast('Ошибка: ' + result.error, 'error');
+    }
+  } catch (e) {
+    showToast('Ошибка соединения', 'error');
+  }
+}
+
+// ── Удаление категории ───────────────────────────────────────
 async function deleteCategorySettings(catId, catName) {
   const ok = await showConfirm(
     `Удалить «${catName}»?`,
@@ -2287,44 +2459,35 @@ async function deleteCategorySettings(catId, catName) {
     const result = await pywebview.api.delete_category(catId);
     if (result.success) {
       showToast('Категория удалена', 'success');
-      
-      // Перезагружаем и ВСЕГДА перерисовываем
-      await reloadData();
-      
-      if (App.activeView === 'settings') {
-        renderSettingsView();
+      UndoHistory.clear();
+
+      // Перезагружаем данные (silent)
+      await reloadData(true);
+
+      // Точечно обновляем списки в настройках
+      if (App.activeView === 'settings' && App.data) {
+        const allCats = App.data.categories;
+
+        const incomeContainer = document.getElementById('s-income-cats');
+        const expenseContainer = document.getElementById('s-expense-cats');
+
+        if (incomeContainer) {
+          renderSettingsCategoryList(
+            allCats.filter(c => c.type === 'income'),
+            incomeContainer
+          );
+        }
+        if (expenseContainer) {
+          renderSettingsCategoryList(
+            allCats.filter(c => c.type === 'expense'),
+            expenseContainer
+          );
+        }
       }
-    } else {
-      showToast('Ошибка: ' + result.error, 'error');
-    }
-  } catch (e) {
-    showToast('Ошибка соединения', 'error');
-  }
-}
 
-async function submitAddCategorySettings() {
-  const name = document.getElementById('s-new-cat-name')?.value.trim();
-  const type = document.getElementById('s-new-cat-type')?.value;
+      // Таблицу тоже обновляем — строка категории должна исчезнуть
+      if (App.data) renderTable(App.data);
 
-  if (!name) { showToast('Введите название категории', 'error'); return; }
-
-  try {
-    const result = await pywebview.api.add_category({
-      name,
-      type,
-      color_code: type === 'income' ? '#10b981' : '#f43f5e',
-    });
-    if (result.success) {
-      document.getElementById('s-new-cat-name').value = '';
-      showToast(`Категория «${name}» добавлена`, 'success');
-      
-      // Перезагружаем данные И ВСЕГДА ПЕРЕРИСОВЫВАЕМ ТАБЛИЦУ
-      await reloadData();
-      
-      // Если открыта settings, то обновим и её
-      if (App.activeView === 'settings') {
-        renderSettingsView();
-      }
     } else {
       showToast('Ошибка: ' + result.error, 'error');
     }
@@ -2392,7 +2555,9 @@ async function handleExport() {
     if (!result.success) { showToast('Ошибка экспорта', 'error'); return; }
 
     const content  = JSON.stringify(result.data, null, 2);
-    const today    = new Date().toISOString().slice(0, 10);
+    
+    const today = getTodayISO();
+    
     const filename = `cashflow_backup_${today}.json`;
 
     const saved = await pywebview.api.save_file_dialog(content, filename);
@@ -2775,9 +2940,10 @@ function initWindowControls() {
 // ЗАГРУЗКА ДАННЫХ
 // ══════════════════════════════════════════════════════════════
 
-async function reloadData() {
+async function reloadData(silent = false) {
   const loader = document.getElementById('loader');
-  loader?.classList.remove('hidden');
+  // Включаем крутилку загрузки только если режим НЕ тихий
+  if (!silent) loader?.classList.remove('hidden');
 
   try {
     const timeoutPromise = new Promise((_, reject) =>
@@ -2790,32 +2956,29 @@ async function reloadData() {
     ]);
 
     if (data.error) {
-      console.error('Ошибка данных:', data.error);
-      showToast('Ошибка загрузки данных', 'error');
+      if (!silent) showToast('Ошибка загрузки данных', 'error');
       return;
     }
 
     App.data = data;
     if (Array.isArray(data.comments)) {
-      // Если Питон вернул список (List)
       CellComments = {};
       data.comments.forEach(c => {
         CellComments[`${c.category_id}:${c.week_start_date || c.week_start}`] = c.comment;
       });
     } else {
-      // Если Питон вернул Словарь (Dict)
       CellComments = data.comments || {};
     }
 
-    if (App.activeView === 'dashboard') {
+    // Перерисовываем ВСЮ таблицу только если режим НЕ тихий
+    if (App.activeView === 'dashboard' && !silent) {
       renderTable(data);
     }
 
   } catch (e) {
-    console.error('Ошибка загрузки:', e);
-    showToast('Не удалось загрузить данные. Перезагрузите страницу.', 'error');
+    if (!silent) showToast('Не удалось загрузить данные.', 'error');
   } finally {
-    loader?.classList.add('hidden');
+    if (!silent) loader?.classList.add('hidden');
   }
 }
 
@@ -2912,15 +3075,10 @@ let _undoInProgress = false;
 
 async function undoLastAction() {
   if (_undoInProgress) return;
-
-  if (UndoHistory.isEmpty()) {
-    showToast('Нечего отменять', 'info');
-    return;
-  }
+  if (UndoHistory.isEmpty()) { showToast('Нечего отменять', 'info'); return; }
 
   _undoInProgress = true;
   closeActiveCellEditor(true);
-
   const action = UndoHistory.pop();
 
   try {
@@ -2930,12 +3088,23 @@ async function undoLastAction() {
       await undoAutofill(action);
     } else if (action.type === ACTION_TYPES.LOAN_REPAYMENT) {
       await undoLoanRepayment(action);
+    } else if (action.type === 'ADD_FACT') {
+      // Отмена добавления = удаляем все созданные ID (их может быть 2 из-за копилки)
+      for (const fId of action.factIds) {
+        await pywebview.api.delete_fact_transaction({ fact_id: fId });
+      }
+    } else if (action.type === 'DELETE_FACT') {
+      // Отмена удаления = добавляем заново (используем add_fact_transaction)
+      await pywebview.api.add_fact_transaction(action.deletedData);
+    } else if (action.type === 'EDIT_FACT') {
+      // Отмена изменения = возвращаем старую сумму
+      await pywebview.api.update_fact_transaction({ fact_id: action.factId, amount: action.oldAmount });
     }
+    
     showToast('Действие отменено', 'success');
     await reloadData();
   } catch (e) {
-    console.error('Ошибка отмены:', e);
-    showToast('Ошибка при отмене действия', 'error');
+    showToast('Ошибка при отмене', 'error');
     UndoHistory.push(action);
   } finally {
     _undoInProgress = false;
@@ -3570,6 +3739,128 @@ function initSidebarNavigation() {
 
   btnReconcile?.addEventListener('click', () => {
     openReconcileModal();
+  });
+}
+
+function renderEditorBody(isUpdate = false) {
+  const body = document.getElementById('cell-editor-body');
+  if (!body) return;
+
+  const { categoryId, weekStart, mode } = App.editing;
+  const key = `${categoryId}:${weekStart}`;
+  
+  if (mode === 'plan') {
+    const plan = App.data.plans[key];
+    const initVal = plan ? plan.amount.toString() : '';
+    
+    body.innerHTML = `
+      <input id="cell-editor-input" type="text" value="${initVal}" autocomplete="off" placeholder="0" 
+             oninput="this.value = this.value.replace(/[^0-9.,+-]/g, '')" />
+      <div class="cell-editor-actions" style="margin-top: 4px;">
+        <button type="button" class="cell-editor-cancel" onclick="closeActiveCellEditor(true)">✕</button>
+        <button type="button" class="cell-editor-confirm" onclick="saveCellEditor()">ОК</button>
+      </div>
+    `;
+    
+    const input = document.getElementById('cell-editor-input');
+    if (!isUpdate) setTimeout(() => input.focus(), 50);
+    
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter')  { e.preventDefault(); saveCellEditor(); }
+      if (e.key === 'Escape') { e.preventDefault(); closeActiveCellEditor(true); }
+      if (isUndoShortcut(e)) { e.preventDefault(); e.stopPropagation(); undoLastAction(); }
+    });
+
+  } else {
+    // Вкладка ФАКТ
+    const facts = App.data.facts[key] ? [...App.data.facts[key]] : [];
+    facts.sort((a, b) => {
+      const dateDiff = new Date(a.date) - new Date(b.date);
+      return dateDiff !== 0 ? dateDiff : a.id - b.id;
+    });
+    const fmt = d => d ? d.split('-').reverse().slice(0,2).join('.') : '';
+    
+    const editIcon = `<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>`;
+    const trashIcon = `<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>`;
+
+    let listHtml = '';
+    
+    if (facts.length === 0) {
+      listHtml = `<div style="text-align:center; font-size:11px; color:#94a3b8; padding: 16px 0;">Нет операций за эту неделю</div>`;
+    } else {
+      listHtml = `<div class="fact-section-title">История операций</div>`;
+      facts.forEach((f, i) => {
+        // Если это обновление (добавление/редактирование) - отключаем анимацию появления, чтобы не дергалось
+        const animClass = isUpdate ? '' : 'fact-item-animate';
+        const delay = isUpdate ? 0 : 150 + i * 40; 
+        
+        listHtml += `
+          <div class="fact-item ${animClass}" id="fact-item-${f.id}" style="animation-delay: ${delay}ms;">
+            <span class="fact-item-date">${fmt(f.date)}</span>
+            <span class="fact-item-amount" id="fact-amount-text-${f.id}">${formatAmount(f.amount)}</span>
+            <div class="fact-item-actions" id="fact-actions-${f.id}" style="display:flex; gap:2px;">
+              <button type="button" class="fact-icon-btn edit" onclick="startEditFact(${f.id}, ${f.amount})" title="Изменить">${editIcon}</button>
+              <button type="button" class="fact-icon-btn delete" onclick="deleteFact(${f.id})" title="Удалить">${trashIcon}</button>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    const listContainer = document.getElementById('fact-list-container');
+
+    // Если окно УЖЕ открыто и мы просто обновляем данные
+    if (isUpdate && listContainer) {
+      listContainer.innerHTML = listHtml; // Меняем ТОЛЬКО список, не трогая форму внизу
+    } else {
+      // ПЕРВОЕ ОТКРЫТИЕ ОКНА: Рисуем всё с нуля
+      const today = getTodayISO();
+      const defaultDate = (today >= weekStart && today <= App.editing.weekEnd) ? today : weekStart;
+
+      body.innerHTML = `
+        <div id="fact-list-container" class="fact-list-container">${listHtml}</div>
+        <div class="fact-add-form">
+          <div class="fact-section-title" style="margin-bottom:0;">Новая операция</div>
+          <div class="fact-inputs-row">
+            <input type="date" id="new-fact-date" value="${defaultDate}" min="${weekStart}" max="${App.editing.weekEnd}">
+            <input type="text" id="new-fact-amount" placeholder="Сумма" oninput="this.value = this.value.replace(/[^0-9.,+-]/g, '')">
+          </div>
+          <button type="button" class="fact-btn-primary" onclick="addNewFact()">Добавить сумму</button>
+        </div>
+      `;
+      
+      const amtInput = document.getElementById('new-fact-amount');
+      setTimeout(() => amtInput.focus(), 50);
+      amtInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); addNewFact(); }
+        if (e.key === 'Escape') { e.preventDefault(); closeActiveCellEditor(true); }
+        if (isUndoShortcut(e)) { e.preventDefault(); e.stopPropagation(); undoLastAction(); }
+      });
+    }
+  }
+}
+
+function startEditFact(factId, currentAmount) {
+  const amtSpan = document.getElementById(`fact-amount-text-${factId}`);
+  const actionsDiv = document.getElementById(`fact-actions-${factId}`);
+  
+  const saveIcon = `<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`;
+  const cancelIcon = `<svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>`;
+
+  amtSpan.innerHTML = `<input type="text" id="edit-fact-input-${factId}" value="${currentAmount}" style="width:100%; max-width:80px; text-align:right; padding:2px 4px; font-size:12px; border:1px solid #3b82f6; border-radius:4px; outline:none; background:transparent; color:inherit;" oninput="this.value = this.value.replace(/[^0-9.,+-]/g, '')">`;
+  
+  // При отмене вызываем renderEditorBody(true) - тихое обновление!
+  actionsDiv.innerHTML = `
+    <button type="button" class="fact-icon-btn save" onclick="saveEditFact(${factId})" title="Сохранить">${saveIcon}</button>
+    <button type="button" class="fact-icon-btn cancel" onclick="renderEditorBody(true)" title="Отмена">${cancelIcon}</button>
+  `;
+  
+  const input = document.getElementById(`edit-fact-input-${factId}`);
+  input.focus();
+  input.select();
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveEditFact(factId);
+    if (e.key === 'Escape') renderEditorBody(true);
   });
 }
 

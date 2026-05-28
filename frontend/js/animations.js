@@ -1,9 +1,9 @@
 // ══════════════════════════════════════════════════════════════
 // ANIMATIONS MODULE
 // ══════════════════════════════════════════════════════════════
-
+let isViewSwitching = false;
 const Anim = {
-
+  
     // ── View Transitions ────────────────────────────────────────
     
     /**
@@ -11,25 +11,26 @@ const Anim = {
      */
     switchView(fromEl, toEl, onMidpoint) {
       return new Promise(resolve => {
-        if (!fromEl || !toEl) {
-          onMidpoint?.();
+        if (!fromEl || !toEl || isViewSwitching) {
+          if (!isViewSwitching) onMidpoint?.();
           resolve();
           return;
         }
   
         // Проверяем, поддерживает ли браузер View Transitions API
         if (document.startViewTransition) {
-          const transition = document.startViewTransition(() => {
-            onMidpoint?.();
+          isViewSwitching = true;
+          const transition = document.startViewTransition(() => onMidpoint?.());
+          transition.finished.then(() => {
+            isViewSwitching = false;
+            resolve();
           });
-          transition.finished.then(resolve);
           return;
         }
-  
-        // Fallback: ручная анимация
-        fromEl.classList.add('view-panel', 'view-exit');
         
-        const duration = 250;
+        // Fallback: ручная анимация
+        isViewSwitching = true;
+        fromEl.classList.add('view-panel', 'view-exit');
         
         setTimeout(() => {
           fromEl.classList.add('hidden');
@@ -42,9 +43,10 @@ const Anim = {
           
           setTimeout(() => {
             toEl.classList.remove('view-enter');
+            isViewSwitching = false;
             resolve();
-          }, duration);
-        }, duration);
+          }, 250);
+        }, 250);
       });
     },
   
@@ -82,7 +84,7 @@ const Anim = {
         el.classList.remove('flex', 'closing');
         el.classList.add('hidden');
         el.classList.remove('modal-overlay');
-      }, 200);
+      }, 150);
     },
   
     // ── Cell Animations ─────────────────────────────────────────
@@ -134,8 +136,7 @@ const Anim = {
       rows.forEach((row, i) => {
         row.classList.add('row-animate');
         // Ограничиваем задержку — чтобы не ждать вечно при 50+ строках
-        const delay = Math.min(i * 18, 300);
-        row.style.animationDelay = `${delay}ms`;
+        row.style.animationDelay = `${i * 15}ms`;
       });
   
       // Очищаем delay после окончания анимации
@@ -144,7 +145,7 @@ const Anim = {
           row.style.animationDelay = '';
           row.classList.remove('row-animate');
         });
-      }, Math.min(rows.length * 18, 300) + 450);
+      }, (rows.length * 15) + 300);
     },
   
     // ── Settings Items Stagger ──────────────────────────────────
@@ -157,12 +158,14 @@ const Anim = {
   
       const items = container.querySelectorAll('.settings-cat-item');
       items.forEach((item, i) => {
+        item.classList.add('settings-item-animate');
         item.style.animationDelay = `${i * 30}ms`;
       });
   
       setTimeout(() => {
         items.forEach(item => {
           item.style.animationDelay = '';
+          item.classList.remove('settings-item-animate');
         });
       }, items.length * 30 + 400);
     },
@@ -266,7 +269,7 @@ const Anim = {
     document.addEventListener('click', (e) => {
       const btn = e.target.closest(
         '.btn-settings-primary, .btn-settings-secondary, .btn-settings-blue, ' +
-        '.cell-editor-confirm, .cell-editor-cancel'
+        '.cell-editor-confirm, .cell-editor-cancel, .fact-btn-primary'
       );
       if (btn) Anim.addRipple(btn, e);
     });
@@ -332,11 +335,11 @@ window.switchView = function(view) {
     const input = document.getElementById('cell-editor-input');
     if (!input) return;
   
-    const amount = evalAmount(input.value);
-    const { el } = App.editing;
+    const amount = window.evalAmount ? window.evalAmount(input.value) : parseFloat(input.value);
+    const el = App?.editing?.el;
   
     // Отрицательное значение — shake + flash error
-    if (amount < 0) {
+    if (amount < 0 && el) {
       Anim.shakeEditor();
       Anim.flashCellError(el);
       showToast('Сумма не может быть отрицательной', 'error');
@@ -357,8 +360,7 @@ window.switchView = function(view) {
   window.showToast = function(message, type = 'success') {
     const existing = document.getElementById('app-toast');
     if (existing) {
-      existing.classList.add('app-toast-exit');
-      setTimeout(() => existing.remove(), 220);
+      existing.remove();
     }
   
     const colors = { success: '#059669', error: '#dc2626', info: '#475569' };
@@ -438,29 +440,31 @@ window.switchView = function(view) {
     });
   };
   
-  // ── onDragOver — добавляем drag-over indicator ──────────────
-  
+  let currentDragRow = null;
+
   const _originalOnDragOver = window.onDragOver;
   window.onDragOver = function(e) {
     _originalOnDragOver?.call(this, e);
     
-    // Ищем текущую строку, над которой находится мышь
-    const row = e.currentTarget || e.target.closest('tr');
+    const row = e.target.closest('tr');
     if (!row) return;
-
-    document.querySelectorAll('.drag-over').forEach(r => {
-      if (r !== row) Anim.markDragOver(r, false);
-    });
-    
-    Anim.markDragOver(row, true);
+  
+    if (row !== currentDragRow) {
+      if (currentDragRow) Anim.markDragOver(currentDragRow, false);
+      Anim.markDragOver(row, true);
+      currentDragRow = row;
+    }
   };
-
+  
   const _originalOnDrop = window.onDrop;
   window.onDrop = function(e) {
-    const row = e.currentTarget || e.target.closest('tr');
-    Anim.markDragOver(row, false);
+    if (currentDragRow) {
+      Anim.markDragOver(currentDragRow, false);
+      currentDragRow = null;
+    }
     _originalOnDrop?.call(this, e);
   };
+
   
   // ── renderSettingsView — анимируем items ────────────────────
   

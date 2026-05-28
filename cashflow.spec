@@ -17,6 +17,7 @@ a = Analysis(
         'sqlalchemy.dialects.sqlite',
         'webview.platforms.winforms',
         'clr',
+        'tzdata',
     ],
     hookspath=[],
     hooksconfig={},
@@ -41,7 +42,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='cashflow',          # имя выходного файла
+    name='CashFlow',          # имя выходного файла
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

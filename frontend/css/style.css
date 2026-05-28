@@ -812,20 +812,21 @@ input[type=number]::-webkit-outer-spin-button {
   EMOJI PICKER
   ══════════════════════════════════════════════════════════════ */
 
-#emoji-picker-panel {
-  position: absolute;
-  z-index: 50;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  padding: 12px;
-  animation: slideDown 0.2s ease-out;
-  width: 400px;
-  max-height: 380px;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
+  #emoji-picker-panel,
+  [id^="emoji-picker-edit-panel-"] {
+    position: absolute;
+    z-index: 999; 
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    padding: 12px;
+    animation: slideDown 0.2s ease-out;
+    width: 400px;
+    max-height: 380px;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
 
 @keyframes slideDown {
   from {
@@ -857,7 +858,9 @@ input[type=number]::-webkit-outer-spin-button {
   border-bottom: 2px solid #3b82f6;
 }
 
-#emoji-grid {
+#emoji-grid,
+[id^="emoji-edit-grid-"],
+[class^="emoji-edit-grid-"] {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   gap: 6px;
@@ -866,21 +869,29 @@ input[type=number]::-webkit-outer-spin-button {
   padding-right: 4px;
 }
 
-#emoji-grid::-webkit-scrollbar {
-  width: 6px;
+#emoji-grid::-webkit-scrollbar,
+[id^="emoji-edit-grid-"]::-webkit-scrollbar,
+[class^="emoji-edit-grid-"]::-webkit-scrollbar { 
+  width: 6px; 
 }
 
-#emoji-grid::-webkit-scrollbar-track {
-  background: transparent;
+#emoji-grid::-webkit-scrollbar-track,
+[id^="emoji-edit-grid-"]::-webkit-scrollbar-track,
+[class^="emoji-edit-grid-"]::-webkit-scrollbar-track { 
+  background: transparent; 
 }
 
-#emoji-grid::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
+#emoji-grid::-webkit-scrollbar-thumb,
+[id^="emoji-edit-grid-"]::-webkit-scrollbar-thumb,
+[class^="emoji-edit-grid-"]::-webkit-scrollbar-thumb { 
+  background: #cbd5e1; 
+  border-radius: 3px; 
 }
 
-#emoji-grid::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+#emoji-grid::-webkit-scrollbar-thumb:hover,
+[id^="emoji-edit-grid-"]::-webkit-scrollbar-thumb:hover,
+[class^="emoji-edit-grid-"]::-webkit-scrollbar-thumb:hover { 
+  background: #94a3b8; 
 }
 
 .emoji-btn {
@@ -1864,3 +1875,298 @@ body.dark input[type="color"]::-webkit-color-swatch {
     background: #94a3b8;
     pointer-events: none;
   }
+
+/* ══════════════════════════════════════════════════════════════
+   ИНДИКАТОР И НОВЫЙ РЕДАКТОР ФАКТОВ
+   ══════════════════════════════════════════════════════════════ */
+
+/* Индикатор множественных транзакций (≡) */
+.fact-multiple-indicator {
+  position: absolute;
+  top: 2px;
+  left: 1px;     /* ← Прижали левее (было 3px) */
+  padding: 2px 4px;
+  font-size: 8.5px;
+  font-weight: 800;
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.15);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Переопределяем жесткую ширину для редактора */
+.cell-editor {
+  width: auto !important;
+  min-width: 140px !important;
+  transition: width 0.2s ease;
+}
+
+.cell-editor.mode-fact {
+  min-width: 250px !important;
+}
+
+/* Список транзакций внутри редактора */
+.fact-list {
+  max-height: 150px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  margin-bottom: 4px;
+  padding-right: 2px;
+}
+
+.fact-list::-webkit-scrollbar { width: 4px; }
+
+.fact-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+body.dark .fact-item {
+  background: #0f172a;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+.fact-item-date {
+  font-size: 11px;
+  color: #64748b;
+  background: rgba(148, 163, 184, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 3px !important;
+  flex-shrink: 0;
+}
+
+.fact-item-amount {
+  font-weight: 600;
+  flex: 1;
+  text-align: right;
+  padding-right: 8px;
+}
+
+.fact-item-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.fact-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.fact-btn:hover { opacity: 1; }
+
+/* Форма добавления транзакции */
+.fact-add-form {
+  display: flex;
+  gap: 4px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 6px;
+  margin-top: 2px;
+}
+
+body.dark .fact-add-form { border-color: #334155; }
+
+.fact-add-form input[type="text"] {
+  flex: 1;
+  padding: 3px 6px;
+}
+
+.fact-add-btn {
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  width: 26px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.fact-add-btn:hover { background: #059669; }
+
+/* Редактирование суммы инлайн */
+.fact-edit-input {
+  width: 60px;
+  text-align: right;
+  font-size: 11px;
+  padding: 1px 4px;
+  border: 1px solid #3b82f6;
+  border-radius: 3px;
+  outline: none;
+}
+body.dark .fact-edit-input {
+  background: #1e293b; color: white;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ОКОШКО ФАКТА (CELL EDITOR) И ИНДИКАТОРЫ
+   ══════════════════════════════════════════════════════════════ */
+
+/* Индикатор количества транзакций (в левом верхнем углу) */
+.fact-multiple-indicator {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  padding: 2px 4px;
+  font-size: 8.5px;
+  font-weight: 800;
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.15); /* Нежный синий фон */
+  color: #2563eb;                       /* Синий текст */
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  line-height: 1;
+  pointer-events: none;
+}
+
+body.dark .fact-multiple-indicator {
+  background: rgba(96, 165, 250, 0.15);
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+/* Переопределяем жесткую ширину для редактора */
+.cell-editor {
+  width: auto !important;
+  min-width: 140px !important;
+  transition: width 0.2s ease;
+}
+
+.cell-editor.mode-fact {
+  min-width: 260px !important;
+}
+
+/* Списки операций */
+.fact-list-container {
+  margin-bottom: 12px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.fact-list-container::-webkit-scrollbar { width: 4px; }
+
+.fact-section-title {
+  font-size: 10px;
+  font-weight: bold;
+  color: #64748b;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+}
+
+/* Элемент списка */
+.fact-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.fact-item-date {
+  font-size: 11px;
+  color: #64748b;
+  background: rgba(148, 163, 184, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+
+.fact-item-amount {
+  flex: 1;
+  text-align: right;
+  font-weight: 600;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  margin-right: 12px;
+}
+
+/* Форма добавления */
+.fact-add-form {
+  background: rgba(148, 163, 184, 0.05);
+  padding: 10px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fact-inputs-row {
+  display: flex;
+  gap: 6px;
+}
+
+.fact-add-form input {
+  padding: 5px 6px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 6px;
+  font-size: 12px;
+  outline: none;
+  background: transparent;
+  color: inherit;
+}
+
+.fact-add-form input[type="date"] {
+  width: 118px !important;
+  min-width: 118px !important;
+  flex-shrink: 0 !important;
+  padding: 5px 6px !important;
+  letter-spacing: -0.5px !important;
+  text-align: left !important;
+}
+
+.fact-add-form input[type="text"] {
+  flex: 1;
+}
+
+.fact-btn-primary {
+  width: 100%;
+  padding: 8px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  margin-top: 2px;
+  transition: background 0.2s;
+}
+
+.fact-btn-primary:hover {
+  background: #2563eb;
+}
+
+/* Иконки действий */
+.fact-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s, background 0.2s;
+}
+.fact-icon-btn:hover { opacity: 1; background: rgba(148, 163, 184, 0.1); }
+.fact-icon-btn.edit { color: #3b82f6; }
+.fact-icon-btn.delete { color: #ef4444; }
+.fact-icon-btn.save { color: #10b981; }
+.fact-icon-btn.cancel { color: #64748b; }
