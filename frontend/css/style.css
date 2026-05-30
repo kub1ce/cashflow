@@ -1,6 +1,3 @@
-/* ══════════════════════════════════════════════════════════════
-   BASE
-   ══════════════════════════════════════════════════════════════ */
 * { box-sizing: border-box; }
 
 body {
@@ -10,15 +7,15 @@ body {
 }
 
 :root {
-  --past-week-bg: #c7defc; /* Цвет прошедших недель для светлой темы */
-}
-body.dark {
-  --past-week-bg: #5f636c; /* Цвет прошедших недель для тёмной темы */
+  --past-week-bg: #c7defc;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   SIDEBAR NAV
-   ══════════════════════════════════════════════════════════════ */
+body.dark {
+  --past-week-bg: #5f636c;
+}
+
+/* Navigation buttons */
+
 .nav-btn {
   display: flex;
   align-items: center;
@@ -46,9 +43,8 @@ body.dark {
   color: white;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   ТАБЛИЦА
-   ══════════════════════════════════════════════════════════════ */
+/* Table structure */
+
 .cashflow-table {
   border-collapse: separate;
   table-layout: auto;
@@ -56,7 +52,7 @@ body.dark {
   border-spacing: 0;
   width: auto;
   margin: 0;
-  padding: 0; 
+  padding: 0;
 }
 
 .cashflow-table th,
@@ -68,7 +64,8 @@ body.dark {
   border-top: 1px solid #94a3b8;
 }
 
-/* ── Шапка ────────────────────────────────────────────────── */
+/* Table header */
+
 .cashflow-table thead th {
   background: #f1f5f9;
   font-weight: 600;
@@ -79,7 +76,8 @@ body.dark {
   padding: 8px 12px;
 }
 
-/* Угловая ячейка */
+/* Sticky left column */
+
 .th-sticky {
   position: sticky;
   left: 0;
@@ -92,12 +90,10 @@ body.dark {
   white-space: nowrap;
 }
 
-/* Тёмная тема */
 body.dark .th-sticky {
   background: #0f172a;
 }
 
-/* Ячейки недель в шапке */
 .th-week {
   position: sticky;
   top: 0;
@@ -107,22 +103,18 @@ body.dark .th-sticky {
   padding: 8px 4px;
 }
 
-/* Номер недели */
 .week-number {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  /* color: #475569; */
 }
 
-/* Даты недели */
 .week-dates {
   font-size: 11px;
   font-weight: 800;
-  /* color: #0f172a; */
   margin-top: 2px;
-  background: rgba(203,213,225,0.4);
+  background: rgba(203, 213, 225, 0.4);
   border-radius: 4px;
   padding: 1px 4px;
   display: inline-block;
@@ -130,12 +122,10 @@ body.dark .th-sticky {
   letter-spacing: -0.01em;
 }
 
-/* Ячейка с плановым значением */
 .data-cell.has-plan {
-  background: #b3becc !important;  /* Светло-голубой */
+  background: #b3becc !important;
 }
 
-/* Текущая неделя + план */
 .data-cell.has-plan.current-week {
   background: linear-gradient(135deg, #b3becc 0%) !important;
 }
@@ -144,7 +134,6 @@ body.dark .th-sticky {
   background: linear-gradient(135deg, #b3becc 0%) !important;
 }
 
-/* ── Sticky левая колонка ─────────────────────────────────── */
 .td-sticky {
   position: sticky;
   left: 0;
@@ -155,12 +144,12 @@ body.dark .th-sticky {
   border-right: 1px solid #94a3b8;
 }
 
-/* Тёмная тема */
 body.dark .td-sticky {
   background: #1e293b;
 }
 
-/* ── Секция-разделитель ───────────────────────────────────── */
+/* Section dividers */
+
 .row-section td {
   padding: 0;
   border-color: #94a3b8;
@@ -178,7 +167,7 @@ body.dark .td-sticky {
 }
 
 .row-section.income-section td {
-  background: rgba(236,253,245,0.5);
+  background: rgba(236, 253, 245, 0.5);
 }
 
 .row-section.income-section .section-label {
@@ -186,14 +175,15 @@ body.dark .td-sticky {
 }
 
 .row-section.expense-section td {
-  background: rgba(255,241,242,0.5);
+  background: rgba(255, 241, 242, 0.5);
 }
 
 .row-section.expense-section .section-label {
   color: #be123c;
 }
 
-/* ── Строки категорий ─────────────────────────────────────── */
+/* Category rows */
+
 .row-category {
   cursor: default;
   left: 0;
@@ -211,7 +201,6 @@ body.dark .td-sticky {
   opacity: 0.5;
 }
 
-/* Ячейка с названием категории */
 .cat-name-cell {
   display: flex;
   align-items: center;
@@ -248,7 +237,6 @@ body.dark .td-sticky {
   max-width: 170px;
 }
 
-/* Кнопка автозаполнения */
 .autofill-btn {
   opacity: 0;
   display: flex;
@@ -263,29 +251,27 @@ body.dark .td-sticky {
   transition: opacity 0.15s, background 0.15s, border-color 0.15s;
   flex-shrink: 0;
   color: #64748b;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .row-category:hover .autofill-btn {
   opacity: 1;
 }
 
-/* Для доходов */
 .autofill-btn.income:hover {
   background: #ecfdf5;
   border-color: transparent;
   color: #047857;
 }
 
-/* Для расходов */
 .autofill-btn.expense:hover {
   background: #fff1f2;
   border-color: transparent;
   color: #be123c;
 }
 
-/* ── Ячейки данных ────────────────────────────────────────── */
-/* Переносим ховер на саму ячейку (td) */
+/* Data cells */
+
 .data-cell {
   cursor: pointer;
   transition: background 0.15s, filter 0.15s;
@@ -305,28 +291,29 @@ body.dark .data-cell:hover {
 }
 
 /* Inline editor */
+
 .cell-editor {
-  /* position и inset удалены — задаются в JS как fixed */
   background: white;
   display: flex;
   flex-direction: column;
   padding: 5px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   border: 1.5px solid #93c5fd;
   border-radius: 6px;
   gap: 4px;
-
-/* КЛЮЧЕВЫЕ ПАРАМЕТРЫ */
-  width: 140px !important;  /* Фиксированная ширина */
+  width: 140px !important;
   min-width: 140px !important;
-  max-width: 140px !important;
-  }
+  transition: width 0.2s ease;
+}
 
-/* Тёмная тема */
+.cell-editor.mode-fact {
+  min-width: 260px !important;
+}
+
 body.dark .cell-editor {
   background: #1e293b;
   border-color: #3b82f6;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
 }
 
 .cell-editor-tabs {
@@ -356,7 +343,7 @@ body.dark .cell-editor {
 .cell-editor-tab.active {
   background: #2563eb;
   color: white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .cell-editor-tab:hover:not(.active) {
@@ -364,7 +351,6 @@ body.dark .cell-editor {
   background: #f1f5f9;
 }
 
-/* Тёмная тема */
 body.dark .cell-editor-tab {
   background: #475569;
   color: #94a3b8;
@@ -373,7 +359,7 @@ body.dark .cell-editor-tab {
 body.dark .cell-editor-tab.active {
   background: #3b82f6;
   color: white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 body.dark .cell-editor-tab:hover:not(.active) {
@@ -397,10 +383,9 @@ body.dark .cell-editor-tab:hover:not(.active) {
 
 .cell-editor input:focus {
   border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
 }
 
-/* Кнопки подтверждения/отмены */
 .cell-editor-actions {
   display: flex;
   gap: 3px;
@@ -446,7 +431,6 @@ body.dark .cell-editor-tab:hover:not(.active) {
   background: #1d4ed8;
 }
 
-/* Значения план/факт */
 .val-plan-income {
   color: #64748b;
   font-weight: 500;
@@ -460,7 +444,6 @@ body.dark .cell-editor-tab:hover:not(.active) {
 
 .val-fact-income {
   font-weight: 700;
-  /* color задаётся инлайн через color_code категории */
 }
 
 .val-fact-expense {
@@ -469,17 +452,17 @@ body.dark .cell-editor-tab:hover:not(.active) {
 }
 
 body.dark .val-fact-expense {
-  color: #e6a7a7 !important;  /* Светлый красный для видимости на тёмном фоне */
+  color: #e6a7a7 !important;
 }
 
-/* ── Итоговые строки ──────────────────────────────────── */
+/* Total rows */
+
 .row-total td {
   font-weight: 700;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   padding: 6px 8px;
   border-color: #94a3b8;
-  /* background НЕ задаём — он придёт из JS инлайн-стилем */
 }
 
 .row-total .td-sticky {
@@ -491,20 +474,20 @@ body.dark .val-fact-expense {
   padding: 6px 16px;
 }
 
-/* Тёмная тема */
 body.dark .row-total .td-sticky {
   background: #162032;
   color: #94a3b8;
 }
 
-/* ── Строка баланса (sticky bottom) ──────────────────────── */
+/* Balance row */
+
 .row-balance td {
   color: white;
   font-weight: 700;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   padding: 6px 8px;
-  border-color: rgba(255,255,255,0.3);
+  border-color: rgba(255, 255, 255, 0.3);
   isolation: isolate;
   opacity: 1;
   border: 1px solid #94a3b8 !important;
@@ -514,9 +497,8 @@ body.dark .row-total .td-sticky {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: rgba(255,255,255,0.7);
+  color: rgba(255, 255, 255, 0.7);
   padding: 6px 16px;
-  /* background задаётся через JS из settings.weekColor */
 }
 
 .balance-cell-inner {
@@ -528,7 +510,6 @@ body.dark .row-total .td-sticky {
   font-variant-numeric: tabular-nums;
 }
 
-/* Иконка дефицита */
 .wand-btn {
   display: inline-flex;
   align-items: center;
@@ -536,7 +517,7 @@ body.dark .row-total .td-sticky {
   width: 22px;
   height: 22px;
   border-radius: 4px;
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.2);
   border: none;
   cursor: pointer;
   font-size: 12px;
@@ -550,10 +531,9 @@ body.dark .row-total .td-sticky {
 }
 
 .wand-btn:hover {
-  background: rgba(255,255,255,0.35);
+  background: rgba(255, 255, 255, 0.35);
 }
 
-/* Первая ячейка баланса кликабельна */
 .balance-init-cell {
   cursor: pointer;
 }
@@ -562,9 +542,8 @@ body.dark .row-total .td-sticky {
   opacity: 0.85;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   DRAG AND DROP
-   ══════════════════════════════════════════════════════════════ */
+/* Drag and drop */
+
 .row-category[draggable="true"] {
   cursor: grab;
 }
@@ -573,15 +552,14 @@ body.dark .row-total .td-sticky {
   cursor: grabbing;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   SETTINGS VIEW
-   ══════════════════════════════════════════════════════════════ */
+/* Settings */
+
 .settings-section {
   background: white;
   padding: 20px;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .settings-section h2 {
@@ -607,7 +585,7 @@ body.dark .row-total .td-sticky {
 
 .settings-input:focus {
   border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
 }
 
 .settings-select {
@@ -621,7 +599,6 @@ body.dark .row-total .td-sticky {
   font-family: inherit;
 }
 
-/* Категория в настройках */
 .settings-cat-item {
   display: flex;
   align-items: center;
@@ -658,7 +635,7 @@ body.dark .row-total .td-sticky {
 
 .settings-cat-edit-input:focus {
   border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
 }
 
 .settings-icon-btn {
@@ -674,7 +651,7 @@ body.dark .row-total .td-sticky {
   cursor: pointer;
   transition: all 0.15s;
   flex-shrink: 0;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .settings-icon-btn:hover {
@@ -689,7 +666,6 @@ body.dark .row-total .td-sticky {
   background: #fef2f2;
 }
 
-/* Кнопки в настройках */
 .btn-settings-primary {
   padding: 10px 24px;
   background: #1e293b;
@@ -740,16 +716,12 @@ body.dark .row-total .td-sticky {
   background: #1d4ed8;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   TOAST
-   ══════════════════════════════════════════════════════════════ */
 #app-toast {
   pointer-events: none;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   УТИЛИТЫ
-   ══════════════════════════════════════════════════════════════ */
+/* Utilities */
+
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {
   -webkit-appearance: none;
@@ -759,84 +731,82 @@ input[type=number]::-webkit-outer-spin-button {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
 .animate-spin {
   animation: spin 0.8s linear infinite;
 }
 
-/* Скрыть/показать */
 .hidden { display: none !important; }
 
-/* Строка баланса всегда поверх контента при скролле */
 .row-balance {
   position: sticky;
   bottom: 0;
   z-index: 25;
 }
 
-/* Кнопки режима автозаполнения */
-.af-mode-btn {
-  border-color: #e2e8f0;
-  color: #64748b;
-  background: white;
+body.dark .text-slate-600,
+body.dark .text-slate-500 {
+  color: #60a5fa !important;
 }
 
-.af-mode-btn:hover {
-  border-color: #93c5fd;
-  color: #2563eb;
-}
-
-.af-mode-btn.active {
-  border-color: #2563eb;
-  background: #eff6ff;
-  color: #2563eb;
-}
-
+.af-mode-btn,
 .def-mode-btn {
   border-color: #e2e8f0;
   color: #64748b;
   background: white;
 }
 
+.af-mode-btn:hover,
 .def-mode-btn:hover {
   border-color: #93c5fd;
   color: #2563eb;
 }
 
+.af-mode-btn.active,
 .def-mode-btn.active {
   border-color: #2563eb;
   background: #eff6ff;
   color: #2563eb;
 }
 
-/* ══════════════════════════════════════════════════════════════
-  EMOJI PICKER
-  ══════════════════════════════════════════════════════════════ */
+/* Dark theme */
+body.dark .af-mode-btn,
+body.dark .def-mode-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
 
-  #emoji-picker-panel,
-  [id^="emoji-picker-edit-panel-"] {
-    position: absolute;
-    z-index: 999; 
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-    padding: 12px;
-    animation: slideDown 0.2s ease-out;
-    width: 400px;
-    max-height: 380px;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
+body.dark .af-mode-btn:hover,
+body.dark .def-mode-btn:hover {
+  background: #263248;
+  border-color: #3b82f6;
+  color: #60a5fa;
+}
 
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+body.dark .af-mode-btn.active,
+body.dark .def-mode-btn.active {
+  background: #1e3a8a;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+
+/* Emoji picker */
+
+#emoji-picker-panel,
+[id^="emoji-picker-edit-panel-"] {
+  position: absolute;
+  z-index: 999;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  padding: 12px;
+  width: 440px !important;
+  max-height: 380px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .emoji-tab {
@@ -871,27 +841,27 @@ input[type=number]::-webkit-outer-spin-button {
 
 #emoji-grid::-webkit-scrollbar,
 [id^="emoji-edit-grid-"]::-webkit-scrollbar,
-[class^="emoji-edit-grid-"]::-webkit-scrollbar { 
-  width: 6px; 
+[class^="emoji-edit-grid-"]::-webkit-scrollbar {
+  width: 6px;
 }
 
 #emoji-grid::-webkit-scrollbar-track,
 [id^="emoji-edit-grid-"]::-webkit-scrollbar-track,
-[class^="emoji-edit-grid-"]::-webkit-scrollbar-track { 
-  background: transparent; 
+[class^="emoji-edit-grid-"]::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 #emoji-grid::-webkit-scrollbar-thumb,
 [id^="emoji-edit-grid-"]::-webkit-scrollbar-thumb,
-[class^="emoji-edit-grid-"]::-webkit-scrollbar-thumb { 
-  background: #cbd5e1; 
-  border-radius: 3px; 
+[class^="emoji-edit-grid-"]::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
 }
 
 #emoji-grid::-webkit-scrollbar-thumb:hover,
 [id^="emoji-edit-grid-"]::-webkit-scrollbar-thumb:hover,
-[class^="emoji-edit-grid-"]::-webkit-scrollbar-thumb:hover { 
-  background: #94a3b8; 
+[class^="emoji-edit-grid-"]::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .emoji-btn {
@@ -935,10 +905,8 @@ input[type=number]::-webkit-outer-spin-button {
   opacity: 1;
 }
 
+/* Title bar */
 
-/* ══════════════════════════════════════════════════════════════
-   TITLE BAR
-   ══════════════════════════════════════════════════════════════ */
 #title-bar {
   height: 32px;
   background: #0f172a;
@@ -995,9 +963,12 @@ input[type=number]::-webkit-outer-spin-button {
   color: #e2e8f0;
   -webkit-app-region: drag;
   white-space: nowrap;
-  max-width: 300px;
+  max-width: 40%;
   overflow: hidden;
   text-overflow: ellipsis;
+  pointer-events: none;
+  z-index: 2;
+  text-align: center;
 }
 
 .title-bar-right {
@@ -1007,7 +978,6 @@ input[type=number]::-webkit-outer-spin-button {
   height: 100%;
 }
 
-/* Кнопка "Сегодня" */
 .title-bar-today-btn {
   height: 32px;
   padding: 0 12px;
@@ -1027,10 +997,9 @@ input[type=number]::-webkit-outer-spin-button {
 
 .title-bar-today-btn:hover {
   color: #f1f5f9;
-  background: rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.08);
 }
 
-/* Кнопки управления окном */
 .win-btn {
   width: 46px;
   height: 32px;
@@ -1047,7 +1016,7 @@ input[type=number]::-webkit-outer-spin-button {
 }
 
 .win-btn:hover {
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.1);
   color: #f1f5f9;
 }
 
@@ -1061,9 +1030,7 @@ input[type=number]::-webkit-outer-spin-button {
   height: 10px;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   SCROLLBARS (полосы прокрутки)
-   ══════════════════════════════════════════════════════════════ */
+/* Scrollbars */
 
 ::-webkit-scrollbar {
   width: 10px;
@@ -1097,7 +1064,6 @@ input[type=number]::-webkit-outer-spin-button {
   display: none;
 }
 
-/* Кнопка переключения темы */
 .title-bar-theme-btn {
   height: 32px;
   padding: 0 10px;
@@ -1115,19 +1081,16 @@ input[type=number]::-webkit-outer-spin-button {
 
 .title-bar-theme-btn:hover {
   color: #f1f5f9;
-  background: rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.08);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   DARK THEME
-   ══════════════════════════════════════════════════════════════ */
+/* Dark theme */
 
 body.dark {
   background: #0f172a;
   color: #e2e8f0;
 }
 
-/* Sidebar */
 body.dark aside {
   background: #020617;
 }
@@ -1136,7 +1099,6 @@ body.dark aside .border-b {
   border-color: #1e293b;
 }
 
-/* Header */
 body.dark header {
   background: #1e293b;
   border-color: #334155;
@@ -1146,7 +1108,6 @@ body.dark #view-title {
   color: #f1f5f9;
 }
 
-/* Date picker */
 body.dark #date-picker {
   background: #0f172a;
   border-color: #3b82f6;
@@ -1159,12 +1120,10 @@ body.dark #date-picker:focus {
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
 }
 
-/* Main area */
 body.dark main {
   background: #0f172a;
 }
 
-/* Таблица — обёртка */
 body.dark .flex-1.m-4 {
   background: #1e293b;
   border-color: #334155;
@@ -1175,7 +1134,6 @@ body.dark .flex.justify-end.items-center.p-3 {
   border-color: #334155;
 }
 
-/* Таблица */
 body.dark .cashflow-table {
   background: #1e293b;
 }
@@ -1211,11 +1169,11 @@ body.dark .cat-name-text {
 }
 
 body.dark .row-section.income-section td {
-  background: rgba(6,78,59,0.2);
+  background: rgba(6, 78, 59, 0.2);
 }
 
 body.dark .row-section.expense-section td {
-  background: rgba(127,29,29,0.2);
+  background: rgba(127, 29, 29, 0.2);
 }
 
 body.dark .data-cell.has-plan {
@@ -1232,7 +1190,6 @@ body.dark .autofill-btn {
   color: #94a3b8;
 }
 
-/* Settings */
 body.dark #view-settings {
   background: #0f172a;
 }
@@ -1283,7 +1240,6 @@ body.dark .settings-cat-edit-input {
   color: #e2e8f0;
 }
 
-/* Scrollbar в тёмной теме */
 body.dark ::-webkit-scrollbar-track {
   background: #1e293b;
 }
@@ -1301,7 +1257,6 @@ body.dark ::-webkit-scrollbar-corner {
   background: #1e293b;
 }
 
-/* Модалки */
 body.dark .bg-white {
   background: #1e293b !important;
 }
@@ -1320,11 +1275,6 @@ body.dark .text-slate-700 {
   color: #e2e8f0 !important;
 }
 
-body.dark .text-slate-600,
-body.dark .text-slate-500 {
-  color: #94a3b8 !important;
-}
-
 body.dark input[type=date],
 body.dark input[type=number],
 body.dark input[type=text],
@@ -1335,86 +1285,79 @@ body.dark select {
 }
 
 body.dark .week-dates {
-  background: rgba(0,0,0,0.25);
+  background: rgba(0, 0, 0, 0.25);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   ИСПРАВЛЕНИЯ ТЁМНОЙ ТЕМЫ (ПЕРЕОПРЕДЕЛЕНИЕ ИНЛАЙН СТИЛЕЙ)
-   ══════════════════════════════════════════════════════════════ */
+/* Dark theme fixes */
 
-/* 1. Цветные пикеры в настройках */
 body.dark .color-picker-wrap {
   background: #0f172a;
   border-color: #334155;
 }
+
 body.dark .color-picker-wrap:hover {
   border-color: #3b82f6;
 }
+
 body.dark .color-picker-value {
   color: #cbd5e1;
 }
 
-/* 2. Текст в таблице (перебиваем инлайн-цвета из JS) */
 body.dark .week-number { color: #94a3b8 !important; }
-body.dark .week-dates { 
-  color: #e2e8f0 !important; 
-  background: rgba(0,0,0,0.3) !important; 
+
+body.dark .week-dates {
+  color: #e2e8f0 !important;
+  background: rgba(0, 0, 0, 0.3) !important;
 }
 
-/* 3. Эмодзи-пикер */
 body.dark #emoji-picker-panel,
 body.dark [id^="emoji-picker-edit-panel-"] {
   background: #1e293b !important;
   border-color: #334155 !important;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important;
 }
+
 body.dark .emoji-btn {
   background: #0f172a !important;
   border-color: #334155 !important;
 }
+
 body.dark .emoji-btn:hover {
   background: #334155 !important;
   border-color: #475569 !important;
 }
+
 body.dark .emoji-tab,
 body.dark .emoji-tab-edit {
   color: #94a3b8 !important;
 }
+
 body.dark .emoji-tab.active,
 body.dark .emoji-tab-edit.active {
   color: #3b82f6 !important;
 }
 
-/* Фикс скроллбара внутри эмодзи-пикера */
 body.dark #emoji-grid::-webkit-scrollbar-track,
 body.dark [class^="emoji-edit-grid-"]::-webkit-scrollbar-track {
   background: transparent !important;
 }
+
 body.dark #emoji-grid::-webkit-scrollbar-thumb,
 body.dark [class^="emoji-edit-grid-"]::-webkit-scrollbar-thumb {
   background: #475569 !important;
   border-color: #1e293b !important;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   ПРАВКИ ИНТЕРФЕЙСА (Ширина, Итоги, Ховер)
-   ══════════════════════════════════════════════════════════════ */
+/* Interface tweaks */
 
-/* 1. Ширина эмодзи-пикера (убираем нижний скролл) */
-#emoji-picker-panel,
-[id^="emoji-picker-edit-panel-"] {
-  width: 440px !important;
-}
-
-/* Ховер для ячеек, у которых есть свой цвет (План, Текущая неделя, Прошедшие) */
 .data-cell.has-plan:hover { background: #9cb5d1 !important; }
 body.dark .data-cell.has-plan:hover { background: #374b63 !important; }
 
-/* Универсальное затемнение/осветление цветных ячеек (баланс, текущая неделя) */
 .data-cell[style*="background-color"]:hover,
 .balance-data-cell:hover {
   filter: brightness(0.95);
 }
+
 body.dark .data-cell[style*="background-color"]:hover,
 body.dark .balance-data-cell:hover {
   filter: brightness(1.15);
@@ -1430,12 +1373,8 @@ body.dark .balance-data-cell:hover {
   padding-left: 0 !important;
 }
 
-/* ==========================================================
-   ЛЕВАЯ ГРАНИЦА
-   ========================================================== */
+/* Table borders */
 
-/* Убираем левую границу у первой колонки,
-   НО НЕ для строки Баланс */
 .cashflow-table th:first-child,
 .cashflow-table td:first-child:not(.td-sticky),
 .cashflow-table tr:not(.row-balance) td:first-child {
@@ -1443,66 +1382,46 @@ body.dark .balance-data-cell:hover {
   border-right: none !important;
 }
 
-/* 2. Принудительно рисуем левую границу ПРЯМО НА закрепленных ячейках */
 .th-sticky,
 .td-sticky {
   border-left: 1px solid #94a3b8 !important;
-  /* background-clip лечит баг WebKit с просвечиванием фона под рамкой */
   background-clip: padding-box !important;
-}
-
-/* 2. Принудительно рисуем праву границу ПРЯМО НА закрепленных ячейках */
-.th-sticky,
-.td-sticky {
   border-right: 1px solid #94a3b8 !important;
-  /* background-clip лечит баг WebKit с просвечиванием фона под рамкой */
-  background-clip: padding-box !important;
 }
 
-/* 3. Фикс для строк-секций (+ДОХОДЫ / -РАСХОДЫ) */
 .row-section td {
   border-left: none !important;
 }
 
 .row-section .section-label {
-  /* Вешаем границу на сам прилипающий блок */
-  border-left: 1px solid #94a3b8 !important; 
+  border-left: 1px solid #94a3b8 !important;
   background-clip: padding-box !important;
-  
-  /* Делаем блок такой же ширины, как и вся колонка (чтобы закрыть дырку) */
   width: 256px !important;
   min-width: 256px !important;
   display: block !important;
   box-sizing: border-box !important;
 }
 
-/* 4. ТЁМНАЯ ТЕМА для этих границ */
 body.dark .th-sticky,
 body.dark .td-sticky,
 body.dark .row-section .section-label {
   border-left-color: #334155 !important;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   ДОПОЛНЕНИЯ
-   ══════════════════════════════════════════════════════════════ */
+/* Buttons styling */
 
-/* 2. Делаем кнопки "СОХРАНИТЬ" и "ДОБАВИТЬ" более видимыми в тёмной теме */
-
-/* Улучшаем кнопку Сохранить (предполагается, что это .btn-settings-primary) */
 body.dark .btn-settings-primary {
-  background: #2563eb !important; /* Синий акцент вместо сливающегося темного */
+  background: #2563eb !important;
   border: 1px solid #1d4ed8 !important;
   color: #ffffff !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
+
 body.dark .btn-settings-primary:hover {
   background: #3b82f6 !important;
   border-color: #60a5fa !important;
 }
 
-/* Стилизуем кнопку "ДОБАВИТЬ" (та, что справа от поля "Название") 
-   Если у нее в HTML нет класса, вам нужно добавить ей class="btn-settings-add" */
 .btn-settings-add {
   padding: 8px 16px;
   background: transparent;
@@ -1515,8 +1434,9 @@ body.dark .btn-settings-primary:hover {
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
-  height: 38px; /* Выравнивание по высоте с инпутами */
+  height: 38px;
 }
+
 .btn-settings-add:hover {
   background: #eff6ff;
 }
@@ -1526,132 +1446,68 @@ body.dark .btn-settings-add {
   border-color: #3b82f6;
   background: rgba(59, 130, 246, 0.1);
 }
+
 body.dark .btn-settings-add:hover {
   background: rgba(59, 130, 246, 0.25);
   color: #ffffff;
 }
 
-/* 3. Выравнивание значений в таблице по правому краю */
+/* Text alignment */
 
-/* Для обычных ячеек с данными */
 .cashflow-table .data-cell {
-  text-align: right !important; /* Сдвигаем вправо */
-  padding-right: 12px !important; /* Даем отступ, чтобы цифры не прилипали к рамке */
+  text-align: right !important;
+  padding-right: 12px !important;
 }
 
-/* Для строк итогов (доходы/расходы) */
 .row-total td:not(.td-sticky) {
   text-align: right !important;
   padding-right: 12px !important;
 }
 
-/* Для строки баланса */
 .row-balance td:not(.td-sticky) .balance-cell-inner {
-  justify-content: flex-end !important; /* Сдвигаем контент флексбокса вправо */
+  justify-content: flex-end !important;
   padding-right: 4px;
 }
 
-/* 4. Кнопки Экспорт и Импорт (Адаптация под тёмную тему) */
-/* Кнопка "Экспорт JSON" (Светлая по умолчанию) */
+/* More buttons */
+
 body.dark .btn-settings-secondary {
-  background: #1e293b !important; /* Темный фон, в тон панелям */
-  color: #e2e8f0 !important;      /* Светло-серый текст */
-  border: 1px solid #475569 !important; /* Заметная граница */
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+  border: 1px solid #475569 !important;
 }
+
 body.dark .btn-settings-secondary:hover {
-  background: #334155 !important; /* Чуть светлее при наведении */
+  background: #334155 !important;
   border-color: #64748b !important;
   color: #ffffff !important;
 }
 
-/* Кнопка "Импорт JSON" (Синяя) */
 body.dark .btn-settings-blue {
-  background: #2563eb !important; 
-  border: 1px solid #1d4ed8 !important; /* Добавляем рамку для четкости */
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  background: #2563eb !important;
+  border: 1px solid #1d4ed8 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
+
 body.dark .btn-settings-blue:hover {
   background: #3b82f6 !important;
   border-color: #60a5fa !important;
 }
 
-
-/* 5. Возвращаем границы для строки Остаток (Баланс) */
-/* В вашем коде стоял border-color: rgba(255,255,255,0.3) — из-за этого 
-   сетка сливалась с фоном. Приравниваем её к общим границам таблицы. */
-
-/* Для тёмной темы */
 body.dark .row-balance td {
   border: 1px solid #334155 !important;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   СТИЛИЗАЦИЯ НАТИВНОГО КАЛЕНДАРЯ
-   ══════════════════════════════════════════════════════════════ */
+/* Calendar and color pickers */
 
-/* Для светлой темы (на всякий случай) */
 input[type="date"] {
-  accent-color: #2563eb; /* Фирменный синий цвет приложения */
+  accent-color: #2563eb;
 }
 
-/* Для тёмной темы */
 body.dark input[type="date"] {
   color-scheme: dark;
-  accent-color: #3b82f6; /* Чуть более светлый синий для контраста в тёмной теме */
+  accent-color: #3b82f6;
 }
-
-/* ===== FIX: Autofill / Deficit modals in dark theme ===== */
-
-body.dark .bg-slate-50 {
-  background: #162032 !important;
-}
-
-body.dark .border-slate-200 {
-  border-color: #334155 !important;
-}
-
-body.dark .border-slate-100 {
-  border-color: #334155 !important;
-}
-
-body.dark .text-slate-700 {
-  color: #e2e8f0 !important;
-}
-
-body.dark .text-slate-600 {
-  color: #cbd5e1 !important;
-}
-
-body.dark button.bg-white {
-  background: #1e293b !important;
-  color: #e2e8f0 !important;
-  border-color: #334155 !important;
-}
-
-/* ===== FIX: mode buttons in dark theme ===== */
-
-body.dark .af-mode-btn,
-body.dark .def-mode-btn {
-  background: #1e293b !important;
-  border-color: #334155 !important;
-  color: #cbd5e1 !important;
-}
-
-body.dark .af-mode-btn:hover,
-body.dark .def-mode-btn:hover {
-  background: #263248 !important;
-  border-color: #3b82f6 !important;
-  color: #60a5fa !important;
-}
-
-body.dark .af-mode-btn.active,
-body.dark .def-mode-btn.active {
-  background: #1e3a8a !important;
-  border-color: #3b82f6 !important;
-  color: #ffffff !important;
-}
-
-/* ===== FIX: deficit preview blocks in dark theme ===== */
 
 body.dark .bg-rose-50 {
   background: #3b1f27 !important;
@@ -1681,14 +1537,10 @@ body.dark .text-blue-700 {
   color: #60a5fa !important;
 }
 
-/* ===== FIX: sticky header borders disappearing ===== */
-
-/* Явная верхняя граница */
 .cashflow-table thead th {
   border-top: 1px solid #94a3b8 !important;
 }
 
-/* В тёмной теме */
 body.dark .cashflow-table thead th {
   border-top: 1px solid #334155 !important;
 }
@@ -1713,27 +1565,8 @@ body.dark .th-sticky::after {
 body.dark .bg-white { background: #1e293b !important; }
 body.dark .text-slate-800 { color: #e2e8f0 !important; }
 
-/* ══════════════════════════════════════════════════════════════
-   DARK THEME — WIZARD
-   ══════════════════════════════════════════════════════════════ */
+/* Wizard */
 
-body.dark {
-  background: #0f172a;
-  color: #e2e8f0;
-}
-
-/* Header + Footer */
-body.dark header,
-body.dark footer {
-  background: #1e293b;
-  border-color: #334155;
-}
-
-body.dark #step-header-title {
-  color: #f1f5f9;
-}
-
-/* Inputs */
 body.dark .wizard-input {
   background: #0f172a;
   border-color: #334155;
@@ -1742,14 +1575,13 @@ body.dark .wizard-input {
 
 body.dark .wizard-input:focus {
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
 }
 
 body.dark .wizard-label {
   color: #94a3b8;
 }
 
-/* Strategy cards */
 body.dark .strategy-card {
   background: #1e293b;
   border-color: #334155;
@@ -1773,7 +1605,6 @@ body.dark .strategy-card-desc {
   color: #94a3b8;
 }
 
-/* Category cards */
 body.dark .cat-card {
   background: #1e293b;
   border-color: #334155;
@@ -1792,7 +1623,6 @@ body.dark .cat-check {
   border-color: #475569;
 }
 
-/* Back button */
 body.dark .btn-back {
   background: #1e293b;
   border-color: #334155;
@@ -1803,7 +1633,6 @@ body.dark .btn-back:hover {
   background: #263248;
 }
 
-/* Error banner */
 body.dark .error-banner {
   background: #3b1f27;
   border-color: #5b2c36;
@@ -1818,73 +1647,65 @@ body.dark .error-banner {
   color: #ef4444 !important;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   COLOR PICKERS (Единый стиль для светлой и тёмной темы)
-   ══════════════════════════════════════════════════════════════ */
+/* Color inputs */
+
 input[type="color"] {
-  padding: 0; 
+  padding: 0;
 }
 
 input[type="color"]::-webkit-color-swatch-wrapper {
-  padding: 2px; /* Одинаковый внутренний отступ для обеих тем */
+  padding: 2px;
 }
 
 input[type="color"]::-webkit-color-swatch {
-  border: 1px solid #cbd5e1; /* Рамка самого цвета в светлой теме */
+  border: 1px solid #cbd5e1;
   border-radius: 4px;
 }
 
-/* Перекрашиваем только цвета в тёмной теме (размеры остаются те же!) */
 body.dark input[type="color"] {
   background-color: #1e293b !important;
   border-color: #334155 !important;
 }
 
 body.dark input[type="color"]::-webkit-color-swatch {
-  border-color: #0f172a; /* Рамка самого цвета в тёмной теме */
+  border-color: #0f172a;
 }
 
-/* =========================================
-   REAL FIX: левая линия для строки Баланс
-   ========================================= */
+/* Balance row left border */
 
-   #table-scroll-container {
-    position: relative;
-  }
-  
-  .row-balance {
-    position: sticky;
-    bottom: 0;
-    z-index: 50; /* выше чем обычные строки */
-  }
-  
-  .row-balance .td-sticky {
-    position: sticky;
-    left: 0;
-    z-index: 60;
-  }
-  
-  /* Рисуем линию поверх контейнера */
-  .row-balance .td-sticky::before {
-    content: "";
-    position: absolute;
-    left: -1px;   /* чуть влево чтобы перекрыть контейнер */
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: #94a3b8;
-    pointer-events: none;
-  }
+#table-scroll-container {
+  position: relative;
+}
 
-/* ══════════════════════════════════════════════════════════════
-   ИНДИКАТОР И НОВЫЙ РЕДАКТОР ФАКТОВ
-   ══════════════════════════════════════════════════════════════ */
+.row-balance {
+  position: sticky;
+  bottom: 0;
+  z-index: 50;
+}
 
-/* Индикатор множественных транзакций (≡) */
+.row-balance .td-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 60;
+}
+
+.row-balance .td-sticky::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #94a3b8;
+  pointer-events: none;
+}
+
+/* Fact transactions indicator */
+
 .fact-multiple-indicator {
   position: absolute;
-  top: 2px;
-  left: 1px;     /* ← Прижали левее (было 3px) */
+  top: 3px;
+  left: 3px;
   padding: 2px 4px;
   font-size: 8.5px;
   font-weight: 800;
@@ -1896,161 +1717,14 @@ body.dark input[type="color"]::-webkit-color-swatch {
   pointer-events: none;
 }
 
-/* Переопределяем жесткую ширину для редактора */
-.cell-editor {
-  width: auto !important;
-  min-width: 140px !important;
-  transition: width 0.2s ease;
-}
-
-.cell-editor.mode-fact {
-  min-width: 250px !important;
-}
-
-/* Список транзакций внутри редактора */
-.fact-list {
-  max-height: 150px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 4px;
-  margin-bottom: 4px;
-  padding-right: 2px;
-}
-
-.fact-list::-webkit-scrollbar { width: 4px; }
-
-.fact-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #f8fafc;
-  padding: 4px 6px;
-  border-radius: 4px;
-  font-size: 12px;
-  border: 1px solid #e2e8f0;
-}
-
-body.dark .fact-item {
-  background: #0f172a;
-  border-color: #334155;
-  color: #cbd5e1;
-}
-
-.fact-item-date {
-  font-size: 11px;
-  color: #64748b;
-  background: rgba(148, 163, 184, 0.1);
-  padding: 2px 6px;
-  border-radius: 4px;
-  margin-left: 3px !important;
-  flex-shrink: 0;
-}
-
-.fact-item-amount {
-  font-weight: 600;
-  flex: 1;
-  text-align: right;
-  padding-right: 8px;
-}
-
-.fact-item-actions {
-  display: flex;
-  gap: 2px;
-}
-
-.fact-btn {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: 12px;
-  padding: 2px;
-  opacity: 0.6;
-  transition: opacity 0.15s;
-}
-
-.fact-btn:hover { opacity: 1; }
-
-/* Форма добавления транзакции */
-.fact-add-form {
-  display: flex;
-  gap: 4px;
-  border-top: 1px solid #e2e8f0;
-  padding-top: 6px;
-  margin-top: 2px;
-}
-
-body.dark .fact-add-form { border-color: #334155; }
-
-.fact-add-form input[type="text"] {
-  flex: 1;
-  padding: 3px 6px;
-}
-
-.fact-add-btn {
-  background: #10b981;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  width: 26px;
-  cursor: pointer;
-  font-weight: bold;
-}
-.fact-add-btn:hover { background: #059669; }
-
-/* Редактирование суммы инлайн */
-.fact-edit-input {
-  width: 60px;
-  text-align: right;
-  font-size: 11px;
-  padding: 1px 4px;
-  border: 1px solid #3b82f6;
-  border-radius: 3px;
-  outline: none;
-}
-body.dark .fact-edit-input {
-  background: #1e293b; color: white;
-}
-
-/* ══════════════════════════════════════════════════════════════
-   ОКОШКО ФАКТА (CELL EDITOR) И ИНДИКАТОРЫ
-   ══════════════════════════════════════════════════════════════ */
-
-/* Индикатор количества транзакций (в левом верхнем углу) */
-.fact-multiple-indicator {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  padding: 2px 4px;
-  font-size: 8.5px;
-  font-weight: 800;
-  border-radius: 4px;
-  background: rgba(59, 130, 246, 0.15); /* Нежный синий фон */
-  color: #2563eb;                       /* Синий текст */
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  line-height: 1;
-  pointer-events: none;
-}
-
 body.dark .fact-multiple-indicator {
   background: rgba(96, 165, 250, 0.15);
   color: #60a5fa;
   border-color: rgba(96, 165, 250, 0.3);
 }
 
-/* Переопределяем жесткую ширину для редактора */
-.cell-editor {
-  width: auto !important;
-  min-width: 140px !important;
-  transition: width 0.2s ease;
-}
+/* Fact list container */
 
-.cell-editor.mode-fact {
-  min-width: 260px !important;
-}
-
-/* Списки операций */
 .fact-list-container {
   margin-bottom: 12px;
   max-height: 180px;
@@ -2069,7 +1743,6 @@ body.dark .fact-multiple-indicator {
   letter-spacing: 0.05em;
 }
 
-/* Элемент списка */
 .fact-item {
   display: flex;
   align-items: center;
@@ -2096,7 +1769,8 @@ body.dark .fact-multiple-indicator {
   margin-right: 12px;
 }
 
-/* Форма добавления */
+/* Fact add form */
+
 .fact-add-form {
   background: rgba(148, 163, 184, 0.05);
   padding: 10px;
@@ -2152,7 +1826,8 @@ body.dark .fact-multiple-indicator {
   background: #2563eb;
 }
 
-/* Иконки действий */
+/* Fact action buttons */
+
 .fact-icon-btn {
   background: none;
   border: none;
@@ -2165,8 +1840,211 @@ body.dark .fact-multiple-indicator {
   justify-content: center;
   transition: opacity 0.2s, background 0.2s;
 }
+
 .fact-icon-btn:hover { opacity: 1; background: rgba(148, 163, 184, 0.1); }
 .fact-icon-btn.edit { color: #3b82f6; }
 .fact-icon-btn.delete { color: #ef4444; }
 .fact-icon-btn.save { color: #10b981; }
 .fact-icon-btn.cancel { color: #64748b; }
+
+/* Animation toggles */
+
+.cashflow-table td,
+.cashflow-table th {
+  transition: none !important;
+}
+
+body.no-animations *:not(#animations-toggle):not(.toggle-track):not(.toggle-thumb),
+body.no-animations *:not(#animations-toggle):not(.toggle-track):not(.toggle-thumb)::before,
+body.no-animations *:not(#animations-toggle):not(.toggle-track):not(.toggle-thumb)::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+#animations-toggle,
+.toggle-track,
+.toggle-thumb {
+  transition-duration: 0.2s !important;
+}
+
+/* Toggle switch */
+
+.toggle-track {
+  width: 44px;
+  height: 24px;
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease;
+}
+
+body.dark .toggle-track {
+  background: #475569;
+}
+
+body.dark .toggle-thumb {
+  background: #e2e8f0;
+}
+
+/* Accordion guide */
+
+details summary::-webkit-details-marker { display: none; }
+
+details[open] summary svg {
+  transform: rotate(180deg);
+}
+
+details summary svg {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+body.dark details summary {
+  color: #e2e8f0;
+}
+
+body.dark details summary:hover {
+  background: #263248 !important;
+}
+
+body.dark details {
+  border-color: #334155 !important;
+}
+
+body.dark details > div {
+  border-color: #334155 !important;
+  color: #94a3b8 !important;
+}
+
+body.dark details strong {
+  color: #e2e8f0;
+}
+
+body.dark details kbd {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #94a3b8 !important;
+}
+
+body.dark details code {
+  background: #0f172a !important;
+  color: #94a3b8 !important;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.3s;
+  animation-timing-function: ease-in-out;
+}
+
+/* Lock screen for previous periods */
+.fact-locked-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 12px 8px;
+  gap: 10px;
+}
+
+.fact-locked-icon {
+  font-size: 20px;
+  opacity: 0.8;
+}
+
+.fact-locked-text {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+body.dark .fact-locked-text {
+  color: #94a3b8;
+}
+
+.fact-reminder-box {
+  background: #fffbeb;
+  border: 1px solid #fef3c7;
+  color: #b45309;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  width: 100%;
+  text-align: center;
+}
+
+body.dark .fact-reminder-box {
+  background: #422006;
+  border-color: #78350f;
+  color: #fcd34d;
+}
+
+.fact-btn-unlock {
+  width: 100%;
+  padding: 8px;
+  background: white;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.fact-btn-unlock:hover {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+body.dark .fact-btn-unlock {
+  background: #1e293b;
+  color: #cbd5e1;
+  border-color: #334155;
+}
+
+body.dark .fact-btn-unlock:hover {
+  background: #334155;
+  color: white;
+  border-color: #475569;
+}
+
+/* Forgotten fact icon (in table cell) */
+.fact-warning-indicator {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  padding: 1px 3px;
+  font-size: 8.5px;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  line-height: 1;
+  pointer-events: none;
+  z-index: 2;
+  font-family: system-ui;
+}
+
+body.dark .fact-warning-indicator {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fcd34d;
+  border-color: rgba(251, 191, 36, 0.3);
+}

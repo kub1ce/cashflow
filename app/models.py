@@ -7,7 +7,7 @@ class Category(Base):
 
     id         = Column(Integer, primary_key=True, autoincrement=True)
     name       = Column(String, nullable=False)
-    type       = Column(String, nullable=False)   # 'income' | 'expense'
+    type       = Column(String, nullable=False)
     color_code = Column(String, nullable=True)    # HEX
     sort_order = Column(Integer, nullable=False, default=0)
     is_custom  = Column(Boolean, nullable=False, default=True)

@@ -32,11 +32,9 @@ def get_start_page(frontend_dir: str) -> tuple:
                 return 'wizard.html', 'light'
             return 'index.html', 'light'
         
-        # Читаем тему прямо из БД перед запуском окна
         theme = 'light'
         if settings.visual_config:
             vc = settings.visual_config
-            # SQLAlchemy может вернуть dict или JSON-строку
             if isinstance(vc, str):
                 import json
                 try: vc = json.loads(vc)
@@ -77,7 +75,6 @@ def main():
     api.set_window(window)
     api.set_frontend_dir(frontend_dir)
     webview.start(debug=False)  # ! DEBUG HERE
-
 
 if __name__ == '__main__':
     main()

@@ -1,8 +1,7 @@
-// ══════════════════════════════════════════════════════════════
-// ИНИЦИАЛИЗАЦИЯ PYWEBVIEW
-// ══════════════════════════════════════════════════════════════
-
 async function initPyWebview() {
+  /**
+   * Инициализирует pywebview API.
+   */
   return new Promise(resolve => {
     if (window.pywebview && window.pywebview.api) {
       resolve();
@@ -11,10 +10,6 @@ async function initPyWebview() {
     }
   });
 }
-
-// ══════════════════════════════════════════════════════════════
-// ДАННЫЕ
-// ══════════════════════════════════════════════════════════════
 
 const DEFAULT_CATEGORIES = {
   income: [
@@ -35,33 +30,25 @@ const DEFAULT_CATEGORIES = {
   ],
 };
 
-// ══════════════════════════════════════════════════════════════
-// СОСТОЯНИЕ
-// ══════════════════════════════════════════════════════════════
-
 const state = {
   currentStep: 1,
-  totalSteps:  4,
+  totalSteps: 4,
 
   account: {
-    name:            '',
+    name: '',
     initial_balance: 0,
   },
 
   settings: {
     planning_start_date: '',
-    financial_strategy:  'manual',
+    financial_strategy: 'manual',
   },
 
   selectedCategories: {
-    income:  new Set([0, 1]),
+    income: new Set([0, 1]),
     expense: new Set([0, 1, 2]),
   },
 };
-
-// ══════════════════════════════════════════════════════════════
-// УТИЛИТЫ
-// ══════════════════════════════════════════════════════════════
 
 const STEP_TITLES = {
   1: 'Основной счёт',
@@ -71,6 +58,9 @@ const STEP_TITLES = {
 };
 
 function showError(msg) {
+  /**
+   * Показывает сообщение об ошибке в баннере.
+   */
   const el = document.getElementById('error-banner');
   el.textContent = msg;
   el.classList.remove('hidden');
@@ -78,23 +68,32 @@ function showError(msg) {
 }
 
 function hideError() {
+  /**
+   * Скрывает баннер с ошибкой.
+   */
   document.getElementById('error-banner').classList.add('hidden');
 }
 
 function getMondayISO(dateStr) {
-  const d   = new Date(dateStr + 'T00:00:00');
+  /**
+   * Возвращает ISO дату понедельника для указанной даты.
+   */
+  const d = new Date(dateStr + 'T00:00:00');
   const day = d.getDay();
 
   d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
 
-  const year  = d.getFullYear();
+  const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
-  const date  = String(d.getDate()).padStart(2, '0');
+  const date = String(d.getDate()).padStart(2, '0');
 
   return `${year}-${month}-${date}`;
 }
 
 async function handleToggleMaximize() {
+  /**
+   * Переключает состояние максимизации окна.
+   */
   try {
     const result = await pywebview.api.toggle_maximize();
     
@@ -117,26 +116,21 @@ async function handleToggleMaximize() {
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-// ОБНОВЛЕНИЕ UI
-// ══════════════════════════════════════════════════════════════
-
 function updateUI(step) {
-  // Шаги
+  /**
+   * Обновляет интерфейс при смене шага.
+   */
   document.querySelectorAll('.wizard-step').forEach(el => {
     el.classList.add('hidden');
   });
   document.getElementById(`step-${step}`).classList.remove('hidden');
 
-  // Заголовок
   document.getElementById('step-header-title').textContent =
     STEP_TITLES[step] || '';
 
-  // Кнопка Назад
   document.getElementById('btn-back')
     .classList.toggle('hidden', step === 1);
 
-  // Кнопка Далее/Готово
   const btnNext = document.getElementById('btn-next');
   if (step === state.totalSteps) {
     btnNext.textContent = '✓ Готово';
@@ -146,23 +140,20 @@ function updateUI(step) {
     btnNext.style.background = '';
   }
 
-  // Сайдбар
   for (let i = 1; i <= state.totalSteps; i++) {
     const el = document.getElementById(`sidebar-step-${i}`);
     el.classList.remove('active', 'done');
-    if (i < step)  el.classList.add('done');
+    if (i < step) el.classList.add('done');
     if (i === step) el.classList.add('active');
   }
 
-  // Рендерим категории при переходе на шаг 4
   if (step === 4) renderCategories();
 }
 
-// ══════════════════════════════════════════════════════════════
-// СТРАТЕГИЯ
-// ══════════════════════════════════════════════════════════════
-
 function selectStrategy(btn) {
+  /**
+   * Устанавливает выбранную стратегию.
+   */
   document.querySelectorAll('.strategy-card').forEach(b => {
     b.classList.remove('active');
   });
@@ -170,18 +161,17 @@ function selectStrategy(btn) {
   state.settings.financial_strategy = btn.dataset.value;
 }
 
-// ══════════════════════════════════════════════════════════════
-// КАТЕГОРИИ
-// ══════════════════════════════════════════════════════════════
-
 function renderCategories() {
+  /**
+   * Отображает карточки категорий доходов и расходов.
+   */
   ['income', 'expense'].forEach(type => {
     const container = document.getElementById(`${type}-categories`);
     container.innerHTML = '';
 
     DEFAULT_CATEGORIES[type].forEach((cat, idx) => {
       const selected = state.selectedCategories[type].has(idx);
-      const card     = document.createElement('div');
+      const card = document.createElement('div');
       card.className = `cat-card${selected ? ' selected' : ''}`;
 
       card.innerHTML = `
@@ -203,6 +193,9 @@ function renderCategories() {
 }
 
 function toggleCategory(type, idx, card) {
+  /**
+   * Переключает выбранное состояние категории.
+   */
   const set = state.selectedCategories[type];
   if (set.has(idx)) {
     set.delete(idx);
@@ -215,15 +208,17 @@ function toggleCategory(type, idx, card) {
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-// ВАЛИДАЦИЯ
-// ══════════════════════════════════════════════════════════════
-
 function validateStep(step) {
+  /**
+   * Валидирует данные текущего шага.
+   */
   if (step === 1) {
     const name = document.getElementById('account-name').value.trim();
-    if (!name) { showError('Введите название счёта'); return false; }
-    state.account.name            = name;
+    if (!name) {
+      showError('Введите название счёта');
+      return false;
+    }
+    state.account.name = name;
     state.account.initial_balance =
       parseFloat(document.getElementById('account-balance').value) || 0;
     return true;
@@ -231,13 +226,15 @@ function validateStep(step) {
 
   if (step === 2) {
     const start = document.getElementById('period-start').value;
-    if (!start) { showError('Укажите дату начала периода'); return false; }
+    if (!start) {
+      showError('Укажите дату начала периода');
+      return false;
+    }
     state.settings.planning_start_date = getMondayISO(start);
     return true;
   }
 
   if (step === 3) {
-    // Стратегия сохраняется по клику
     return true;
   }
 
@@ -255,11 +252,10 @@ function validateStep(step) {
   return true;
 }
 
-// ══════════════════════════════════════════════════════════════
-// НАВИГАЦИЯ
-// ══════════════════════════════════════════════════════════════
-
 function wizardNext() {
+  /**
+   * Переходит на следующий шаг или завершает мастер.
+   */
   hideError();
   if (!validateStep(state.currentStep)) return;
 
@@ -273,20 +269,21 @@ function wizardNext() {
 }
 
 function wizardBack() {
+  /**
+   * Возвращается на предыдущий шаг.
+   */
   hideError();
   if (state.currentStep <= 1) return;
   state.currentStep--;
   updateUI(state.currentStep);
 }
 
-// ══════════════════════════════════════════════════════════════
-// СОХРАНЕНИЕ
-// ══════════════════════════════════════════════════════════════
-
 async function finish() {
+  /**
+   * Сохраняет данные мастера и переходит в приложение.
+   */
   const btn = document.getElementById('btn-next');
-  btn.disabled    = true;
-  btn.textContent = 'Сохраняю...';
+  btn.disabled = true;
 
   const categories = [];
   let order = 0;
@@ -294,7 +291,7 @@ async function finish() {
   state.selectedCategories.income.forEach(idx => {
     categories.push({
       ...DEFAULT_CATEGORIES.income[idx],
-      type:       'income',
+      type: 'income',
       sort_order: order++,
     });
   });
@@ -302,19 +299,18 @@ async function finish() {
   state.selectedCategories.expense.forEach(idx => {
     categories.push({
       ...DEFAULT_CATEGORIES.expense[idx],
-      type:       'expense',
+      type: 'expense',
       sort_order: order++,
     });
   });
 
   const payload = {
-    account:    state.account,
-    settings:   state.settings,
+    account: state.account,
+    settings: state.settings,
     categories: categories,
   };
 
   try {
-    // Ждём готовности pywebview
     await new Promise(resolve => {
       if (window.pywebview) resolve();
       else window.addEventListener('pywebviewready', resolve, { once: true });
@@ -323,49 +319,44 @@ async function finish() {
     const result = await pywebview.api.save_wizard_data(payload);
 
     if (result && result.success) {
-      // Небольшая задержка перед навигацией
-      btn.textContent = '✓ Готово!';
+      btn.textContent = 'Генерирую таблицу...';
       setTimeout(async () => {
         await pywebview.api.navigate_to('index.html');
       }, 300);
     } else {
       showError('Ошибка: ' + (result?.error || 'неизвестная ошибка'));
-      btn.disabled    = false;
+      btn.disabled = false;
       btn.textContent = '✓ Готово';
     }
   } catch (e) {
     showError('Ошибка соединения: ' + e.toString());
-    btn.disabled    = false;
+    btn.disabled = false;
     btn.textContent = '✓ Готово';
   }
 }
 
 (function initTitleBarDrag() {
+  /**
+   * Инициализирует перетаскивание окна за title bar.
+   */
   const titleBar = document.getElementById('title-bar');
   if (!titleBar) return;
 
-  let isDragging   = false;
-  let startMouseX  = 0;
-  let startMouseY  = 0;
-  let startWinX    = 0;
-  let startWinY    = 0;
+  let isDragging = false;
+  let startMouseX = 0;
+  let startMouseY = 0;
+  let startWinX = 0;
+  let startWinY = 0;
 
   titleBar.addEventListener('mousedown', async (e) => {
-    // Только левая кнопка мыши
     if (e.button !== 0) return;
-
-    // Не начинаем drag если кликнули по кнопке или интерактивному элементу
     if (e.target.closest('button')) return;
 
-    // Не drag если окно maximized — сначала restore
-    // (Windows-поведение: при перетаскивании maximize окно восстанавливается)
-    isDragging  = false;
+    isDragging = false;
 
-    // Запоминаем стартовую позицию мыши на экране
     startMouseX = e.screenX;
     startMouseY = e.screenY;
 
-    // Получаем текущую позицию окна
     try {
       const pos = await pywebview.api.get_window_pos();
       if (!pos.success) return;
@@ -399,19 +390,16 @@ async function finish() {
     isDragging = false;
   });
 
-  // Двойной клик по title bar — maximize/restore
   titleBar.addEventListener('dblclick', (e) => {
     if (e.target.closest('button')) return;
     pywebview.api.toggle_maximize();
   });
 })();
 
-
-// ══════════════════════════════════════════════════════════════
-// RESIZE ОКНА
-// ══════════════════════════════════════════════════════════════
-
 async function initWindowResize() {
+  /**
+   * Включает возможность ресайзирования окна.
+   */
   try {
     await pywebview.api.enable_window_resize();
     console.log('Window resize enabled');
@@ -420,15 +408,14 @@ async function initWindowResize() {
   }
 }
 
-// ══════════════════════════════════════════════════════════════
-// ТЁМНАЯ ТЕМА (Wizard)
-// ══════════════════════════════════════════════════════════════
-
 function applyTheme(isDark) {
+  /**
+   * Применяет светлую или тёмную тему.
+   */
   document.body.classList.toggle('dark', isDark);
   document.documentElement.classList.toggle('dark', isDark);
 
-  const sun  = document.getElementById('theme-icon-sun');
+  const sun = document.getElementById('theme-icon-sun');
   const moon = document.getElementById('theme-icon-moon');
 
   if (isDark) {
@@ -445,38 +432,30 @@ function applyTheme(isDark) {
 }
 
 async function toggleTheme() {
+  /**
+   * Переключает тему с плавной анимацией.
+   */
   const isDark = !document.body.classList.contains('dark');
 
-  // 1. Включаем CSS-транзишены
   document.body.classList.add('theme-transitioning');
-  
-  // Форсируем перерисовку
   void document.body.offsetWidth;
 
-  // 2. Переключаем тему
   applyTheme(isDark);
 
-  // 3. Выключаем транзишены после завершения (300ms)
   setTimeout(() => {
     document.body.classList.remove('theme-transitioning');
   }, 300);
 
-  // 4. Сохраняем в localStorage
   localStorage.setItem('cashflow-theme', isDark ? 'dark' : 'light');
 }
 
-// ══════════════════════════════════════════════════════════════
-// ИНИЦИАЛИЗАЦИЯ
-// ══════════════════════════════════════════════════════════════
-
 document.addEventListener('DOMContentLoaded', async function() {
-  // Ждём готовности pywebview
+  /**
+   * Инициализирует приложение при загрузке страницы.
+   */
   await initPyWebview();
-  
-  // Инициализируем resize
   await initWindowResize();
 
-  // Определяем тему
   const href = window.location.href;
   const savedTheme = localStorage.getItem('cashflow-theme');
 
@@ -491,12 +470,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     applyTheme(prefersDark);
   }
 
-  // НЕ ТРОГАЕМ ТЕКСТ КНОПКИ! Иконки должны быть SVG, а не эмодзи
-
-  // Устанавливаем понедельник текущей недели
   const today = new Date();
   const day = today.getDay();
-  const diff = day === 0 ? -6 : 1 - day; // сдвиг до понедельника
+  const diff = day === 0 ? -6 : 1 - day;
   today.setDate(today.getDate() + diff);
 
   const year = today.getFullYear();
@@ -506,6 +482,5 @@ document.addEventListener('DOMContentLoaded', async function() {
   document.getElementById('period-start').value =
     `${year}-${month}-${dayNum}`;
 
-  // Показываем первый шаг
   updateUI(1);
 });

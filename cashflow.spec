@@ -10,7 +10,6 @@ a = Analysis(
     pathex=['.'],
     binaries=[],
     datas=[
-        # Копируем весь frontend внутрь .exe
         ('frontend', 'frontend'),
     ],
     hiddenimports=[
@@ -42,14 +41,14 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='CashFlow',          # имя выходного файла
+    name='CashFlow',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,                 # сжатие (нужен UPX)
+    upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,            # --noconsole
+    console=False,
     disable_windowed_traceback=False,
     target_arch=None,
     codesign_identity=None,
