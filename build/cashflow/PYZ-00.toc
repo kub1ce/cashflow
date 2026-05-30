@@ -129,6 +129,57 @@
   ('app.models',
    'C:\\Users\\saveliy\\Documents\\git repo\\cashflow-1\\app\\models.py',
    'PYMODULE'),
+  ('app.modules',
+   'C:\\Users\\saveliy\\Documents\\git '
+   'repo\\cashflow-1\\app\\modules\\__init__.py',
+   'PYMODULE'),
+  ('app.modules.accounts',
+   'C:\\Users\\saveliy\\Documents\\git '
+   'repo\\cashflow-1\\app\\modules\\accounts.py',
+   'PYMODULE'),
+  ('app.modules.autofill',
+   'C:\\Users\\saveliy\\Documents\\git '
+   'repo\\cashflow-1\\app\\modules\\autofill.py',
+   'PYMODULE'),
+  ('app.modules.cashflow',
+   'C:\\Users\\saveliy\\Documents\\git '
+   'repo\\cashflow-1\\app\\modules\\cashflow.py',
+   'PYMODULE'),
+  ('app.modules.categories',
+   'C:\\Users\\saveliy\\Documents\\git '
+   'repo\\cashflow-1\\app\\modules\\categories.py',
+   'PYMODULE'),
+  ('app.modules.constants',
+   'C:\\Users\\saveliy\\Documents\\git '
+   'repo\\cashflow-1\\app\\modules\\constants.py',
+   'PYMODULE'),
+  ('app.modules.deficit',
+   'C:\\Users\\saveliy\\Documents\\git '
+   'repo\\cashflow-1\\app\\modules\\deficit.py',
+   'PYMODULE'),
+  ('app.modules.helpers',
+   'C:\\Users\\saveliy\\Documents\\git '
+   'repo\\cashflow-1\\app\\modules\\helpers.py',
+   'PYMODULE'),
+  ('app.modules.io',
+   'C:\\Users\\saveliy\\Documents\\git repo\\cashflow-1\\app\\modules\\io.py',
+   'PYMODULE'),
+  ('app.modules.reconcile',
+   'C:\\Users\\saveliy\\Documents\\git '
+   'repo\\cashflow-1\\app\\modules\\reconcile.py',
+   'PYMODULE'),
+  ('app.modules.settings',
+   'C:\\Users\\saveliy\\Documents\\git '
+   'repo\\cashflow-1\\app\\modules\\settings.py',
+   'PYMODULE'),
+  ('app.modules.transactions',
+   'C:\\Users\\saveliy\\Documents\\git '
+   'repo\\cashflow-1\\app\\modules\\transactions.py',
+   'PYMODULE'),
+  ('app.modules.window',
+   'C:\\Users\\saveliy\\Documents\\git '
+   'repo\\cashflow-1\\app\\modules\\window.py',
+   'PYMODULE'),
   ('argparse',
    'C:\\Users\\saveliy\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\argparse.py',
    'PYMODULE'),

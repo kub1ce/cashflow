@@ -3055,6 +3055,7 @@ imported by:
     <a href="#app.api">app.api</a>
  &#8226;   <a href="#app.database">app.database</a>
  &#8226;   <a href="#app.models">app.models</a>
+ &#8226;   <a href="#app.modules">app.modules</a>
 
   </div>
 
@@ -3066,17 +3067,17 @@ imported by:
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
     <a href="#app">app</a>
- &#8226;   <a href="#app.database">app.database</a>
- &#8226;   <a href="#app.models">app.models</a>
- &#8226;   <a href="#calendar">calendar</a>
- &#8226;   <a href="#ctypes">ctypes</a>
- &#8226;   <a href="#ctypes.wintypes">ctypes.wintypes</a>
- &#8226;   <a href="#datetime">datetime</a>
- &#8226;   <a href="#json">json</a>
- &#8226;   <a href="#os">os</a>
- &#8226;   <a href="#sqlalchemy">sqlalchemy</a>
- &#8226;   <a href="#threading">threading</a>
- &#8226;   <a href="#webview">webview</a>
+ &#8226;   <a href="#app.modules.accounts">app.modules.accounts</a>
+ &#8226;   <a href="#app.modules.autofill">app.modules.autofill</a>
+ &#8226;   <a href="#app.modules.cashflow">app.modules.cashflow</a>
+ &#8226;   <a href="#app.modules.categories">app.modules.categories</a>
+ &#8226;   <a href="#app.modules.deficit">app.modules.deficit</a>
+ &#8226;   <a href="#app.modules.helpers">app.modules.helpers</a>
+ &#8226;   <a href="#app.modules.io">app.modules.io</a>
+ &#8226;   <a href="#app.modules.reconcile">app.modules.reconcile</a>
+ &#8226;   <a href="#app.modules.settings">app.modules.settings</a>
+ &#8226;   <a href="#app.modules.transactions">app.modules.transactions</a>
+ &#8226;   <a href="#app.modules.window">app.modules.window</a>
 
   </div>
   <div class="import">
@@ -3097,13 +3098,20 @@ imports:
  &#8226;   <a href="#os">os</a>
  &#8226;   <a href="#sqlalchemy">sqlalchemy</a>
  &#8226;   <a href="#sqlalchemy.orm">sqlalchemy.orm</a>
- &#8226;   <a href="#sqlite3">sqlite3</a>
 
   </div>
   <div class="import">
 imported by:
-    <a href="#app.api">app.api</a>
- &#8226;   <a href="#app.models">app.models</a>
+    <a href="#app.models">app.models</a>
+ &#8226;   <a href="#app.modules.accounts">app.modules.accounts</a>
+ &#8226;   <a href="#app.modules.autofill">app.modules.autofill</a>
+ &#8226;   <a href="#app.modules.cashflow">app.modules.cashflow</a>
+ &#8226;   <a href="#app.modules.categories">app.modules.categories</a>
+ &#8226;   <a href="#app.modules.deficit">app.modules.deficit</a>
+ &#8226;   <a href="#app.modules.io">app.modules.io</a>
+ &#8226;   <a href="#app.modules.reconcile">app.modules.reconcile</a>
+ &#8226;   <a href="#app.modules.settings">app.modules.settings</a>
+ &#8226;   <a href="#app.modules.transactions">app.modules.transactions</a>
  &#8226;   <a href="#main.py">main.py</a>
 
   </div>
@@ -3122,9 +3130,278 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#app.api">app.api</a>
- &#8226;   <a href="#app.database">app.database</a>
+    <a href="#app.database">app.database</a>
+ &#8226;   <a href="#app.modules.accounts">app.modules.accounts</a>
+ &#8226;   <a href="#app.modules.autofill">app.modules.autofill</a>
+ &#8226;   <a href="#app.modules.cashflow">app.modules.cashflow</a>
+ &#8226;   <a href="#app.modules.categories">app.modules.categories</a>
+ &#8226;   <a href="#app.modules.deficit">app.modules.deficit</a>
+ &#8226;   <a href="#app.modules.helpers">app.modules.helpers</a>
+ &#8226;   <a href="#app.modules.io">app.modules.io</a>
+ &#8226;   <a href="#app.modules.reconcile">app.modules.reconcile</a>
+ &#8226;   <a href="#app.modules.settings">app.modules.settings</a>
+ &#8226;   <a href="#app.modules.transactions">app.modules.transactions</a>
  &#8226;   <a href="#main.py">main.py</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="app.modules"></a>
+  <a target="code" href="///C:/Users/saveliy/Documents/git%20repo/cashflow-1/app/modules/__init__.py" type="text/plain"><tt>app.modules</tt></a>
+<span class="moduletype">Package</span>  <div class="import">
+imports:
+    <a href="#app">app</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#app.modules.accounts">app.modules.accounts</a>
+ &#8226;   <a href="#app.modules.autofill">app.modules.autofill</a>
+ &#8226;   <a href="#app.modules.cashflow">app.modules.cashflow</a>
+ &#8226;   <a href="#app.modules.categories">app.modules.categories</a>
+ &#8226;   <a href="#app.modules.constants">app.modules.constants</a>
+ &#8226;   <a href="#app.modules.deficit">app.modules.deficit</a>
+ &#8226;   <a href="#app.modules.helpers">app.modules.helpers</a>
+ &#8226;   <a href="#app.modules.io">app.modules.io</a>
+ &#8226;   <a href="#app.modules.reconcile">app.modules.reconcile</a>
+ &#8226;   <a href="#app.modules.settings">app.modules.settings</a>
+ &#8226;   <a href="#app.modules.transactions">app.modules.transactions</a>
+ &#8226;   <a href="#app.modules.window">app.modules.window</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="app.modules.accounts"></a>
+  <a target="code" href="///C:/Users/saveliy/Documents/git%20repo/cashflow-1/app/modules/accounts.py" type="text/plain"><tt>app.modules.accounts</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#app.database">app.database</a>
+ &#8226;   <a href="#app.models">app.models</a>
+ &#8226;   <a href="#app.modules">app.modules</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#app.api">app.api</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="app.modules.autofill"></a>
+  <a target="code" href="///C:/Users/saveliy/Documents/git%20repo/cashflow-1/app/modules/autofill.py" type="text/plain"><tt>app.modules.autofill</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#app.database">app.database</a>
+ &#8226;   <a href="#app.models">app.models</a>
+ &#8226;   <a href="#app.modules">app.modules</a>
+ &#8226;   <a href="#datetime">datetime</a>
+ &#8226;   <a href="#sqlalchemy">sqlalchemy</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#app.api">app.api</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="app.modules.cashflow"></a>
+  <a target="code" href="///C:/Users/saveliy/Documents/git%20repo/cashflow-1/app/modules/cashflow.py" type="text/plain"><tt>app.modules.cashflow</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#app.database">app.database</a>
+ &#8226;   <a href="#app.models">app.models</a>
+ &#8226;   <a href="#app.modules">app.modules</a>
+ &#8226;   <a href="#json">json</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#app.api">app.api</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="app.modules.categories"></a>
+  <a target="code" href="///C:/Users/saveliy/Documents/git%20repo/cashflow-1/app/modules/categories.py" type="text/plain"><tt>app.modules.categories</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#app.database">app.database</a>
+ &#8226;   <a href="#app.models">app.models</a>
+ &#8226;   <a href="#app.modules">app.modules</a>
+ &#8226;   <a href="#app.modules.constants">app.modules.constants</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#app.api">app.api</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="app.modules.constants"></a>
+  <a target="code" href="///C:/Users/saveliy/Documents/git%20repo/cashflow-1/app/modules/constants.py" type="text/plain"><tt>app.modules.constants</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#app.modules">app.modules</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#app.modules.categories">app.modules.categories</a>
+ &#8226;   <a href="#app.modules.window">app.modules.window</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="app.modules.deficit"></a>
+  <a target="code" href="///C:/Users/saveliy/Documents/git%20repo/cashflow-1/app/modules/deficit.py" type="text/plain"><tt>app.modules.deficit</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#app.database">app.database</a>
+ &#8226;   <a href="#app.models">app.models</a>
+ &#8226;   <a href="#app.modules">app.modules</a>
+ &#8226;   <a href="#datetime">datetime</a>
+ &#8226;   <a href="#sqlalchemy">sqlalchemy</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#app.api">app.api</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="app.modules.helpers"></a>
+  <a target="code" href="///C:/Users/saveliy/Documents/git%20repo/cashflow-1/app/modules/helpers.py" type="text/plain"><tt>app.modules.helpers</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#app.models">app.models</a>
+ &#8226;   <a href="#app.modules">app.modules</a>
+ &#8226;   <a href="#calendar">calendar</a>
+ &#8226;   <a href="#datetime">datetime</a>
+ &#8226;   <a href="#sqlalchemy">sqlalchemy</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#app.api">app.api</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="app.modules.io"></a>
+  <a target="code" href="///C:/Users/saveliy/Documents/git%20repo/cashflow-1/app/modules/io.py" type="text/plain"><tt>app.modules.io</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#app.database">app.database</a>
+ &#8226;   <a href="#app.models">app.models</a>
+ &#8226;   <a href="#app.modules">app.modules</a>
+ &#8226;   <a href="#json">json</a>
+ &#8226;   <a href="#webview">webview</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#app.api">app.api</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="app.modules.reconcile"></a>
+  <a target="code" href="///C:/Users/saveliy/Documents/git%20repo/cashflow-1/app/modules/reconcile.py" type="text/plain"><tt>app.modules.reconcile</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#app.database">app.database</a>
+ &#8226;   <a href="#app.models">app.models</a>
+ &#8226;   <a href="#app.modules">app.modules</a>
+ &#8226;   <a href="#datetime">datetime</a>
+ &#8226;   <a href="#sqlalchemy">sqlalchemy</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#app.api">app.api</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="app.modules.settings"></a>
+  <a target="code" href="///C:/Users/saveliy/Documents/git%20repo/cashflow-1/app/modules/settings.py" type="text/plain"><tt>app.modules.settings</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#app.database">app.database</a>
+ &#8226;   <a href="#app.models">app.models</a>
+ &#8226;   <a href="#app.modules">app.modules</a>
+ &#8226;   <a href="#json">json</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#app.api">app.api</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="app.modules.transactions"></a>
+  <a target="code" href="///C:/Users/saveliy/Documents/git%20repo/cashflow-1/app/modules/transactions.py" type="text/plain"><tt>app.modules.transactions</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#app.database">app.database</a>
+ &#8226;   <a href="#app.models">app.models</a>
+ &#8226;   <a href="#app.modules">app.modules</a>
+ &#8226;   <a href="#datetime">datetime</a>
+ &#8226;   <a href="#sqlalchemy">sqlalchemy</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#app.api">app.api</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="app.modules.window"></a>
+  <a target="code" href="///C:/Users/saveliy/Documents/git%20repo/cashflow-1/app/modules/window.py" type="text/plain"><tt>app.modules.window</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#app.modules">app.modules</a>
+ &#8226;   <a href="#app.modules.constants">app.modules.constants</a>
+ &#8226;   <a href="#ctypes">ctypes</a>
+ &#8226;   <a href="#ctypes.wintypes">ctypes.wintypes</a>
+ &#8226;   <a href="#os">os</a>
+ &#8226;   <a href="#threading">threading</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#app.api">app.api</a>
 
   </div>
 
@@ -5089,7 +5366,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#_strptime">_strptime</a>
- &#8226;   <a href="#app.api">app.api</a>
+ &#8226;   <a href="#app.modules.helpers">app.modules.helpers</a>
  &#8226;   <a href="#bottle">bottle</a>
  &#8226;   <a href="#email._parseaddr">email._parseaddr</a>
  &#8226;   <a href="#http.cookiejar">http.cookiejar</a>
@@ -6615,7 +6892,7 @@ imported by:
     <a href="#_ios_support">_ios_support</a>
  &#8226;   <a href="#_pyrepl._minimal_curses">_pyrepl._minimal_curses</a>
  &#8226;   <a href="#_pyrepl.windows_console">_pyrepl.windows_console</a>
- &#8226;   <a href="#app.api">app.api</a>
+ &#8226;   <a href="#app.modules.window">app.modules.window</a>
  &#8226;   <a href="#ctypes._aix">ctypes._aix</a>
  &#8226;   <a href="#ctypes._endian">ctypes._endian</a>
  &#8226;   <a href="#ctypes.macholib">ctypes.macholib</a>
@@ -6788,7 +7065,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#_pyrepl.windows_console">_pyrepl.windows_console</a>
- &#8226;   <a href="#app.api">app.api</a>
+ &#8226;   <a href="#app.modules.window">app.modules.window</a>
  &#8226;   <a href="#asyncpg.compat">asyncpg.compat</a>
  &#8226;   <a href="#ctypes">ctypes</a>
  &#8226;   <a href="#setuptools.windows_support">setuptools.windows_support</a>
@@ -6908,7 +7185,11 @@ imports:
   <div class="import">
 imported by:
     <a href="#_strptime">_strptime</a>
- &#8226;   <a href="#app.api">app.api</a>
+ &#8226;   <a href="#app.modules.autofill">app.modules.autofill</a>
+ &#8226;   <a href="#app.modules.deficit">app.modules.deficit</a>
+ &#8226;   <a href="#app.modules.helpers">app.modules.helpers</a>
+ &#8226;   <a href="#app.modules.reconcile">app.modules.reconcile</a>
+ &#8226;   <a href="#app.modules.transactions">app.modules.transactions</a>
  &#8226;   <a href="#bottle">bottle</a>
  &#8226;   <a href="#calendar">calendar</a>
  &#8226;   <a href="#email.utils">email.utils</a>
@@ -12569,7 +12850,9 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#app.api">app.api</a>
+    <a href="#app.modules.cashflow">app.modules.cashflow</a>
+ &#8226;   <a href="#app.modules.io">app.modules.io</a>
+ &#8226;   <a href="#app.modules.settings">app.modules.settings</a>
  &#8226;   <a href="#asyncpg.prepared_stmt">asyncpg.prepared_stmt</a>
  &#8226;   <a href="#bottle">bottle</a>
  &#8226;   <a href="#clr_loader.util.runtime_spec">clr_loader.util.runtime_spec</a>
@@ -14517,8 +14800,8 @@ imported by:
  &#8226;   <a href="#_pyrepl.windows_console">_pyrepl.windows_console</a>
  &#8226;   <a href="#_sitebuiltins">_sitebuiltins</a>
  &#8226;   <a href="#_strptime">_strptime</a>
- &#8226;   <a href="#app.api">app.api</a>
  &#8226;   <a href="#app.database">app.database</a>
+ &#8226;   <a href="#app.modules.window">app.modules.window</a>
  &#8226;   <a href="#argparse">argparse</a>
  &#8226;   <a href="#asyncio.base_events">asyncio.base_events</a>
  &#8226;   <a href="#asyncio.base_subprocess">asyncio.base_subprocess</a>
@@ -20696,9 +20979,13 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#app.api">app.api</a>
- &#8226;   <a href="#app.database">app.database</a>
+    <a href="#app.database">app.database</a>
  &#8226;   <a href="#app.models">app.models</a>
+ &#8226;   <a href="#app.modules.autofill">app.modules.autofill</a>
+ &#8226;   <a href="#app.modules.deficit">app.modules.deficit</a>
+ &#8226;   <a href="#app.modules.helpers">app.modules.helpers</a>
+ &#8226;   <a href="#app.modules.reconcile">app.modules.reconcile</a>
+ &#8226;   <a href="#app.modules.transactions">app.modules.transactions</a>
  &#8226;   <a href="#sqlalchemy">sqlalchemy</a>
  &#8226;   <a href="#sqlalchemy.connectors">sqlalchemy.connectors</a>
  &#8226;   <a href="#sqlalchemy.connectors.aioodbc">sqlalchemy.connectors.aioodbc</a>
@@ -28575,8 +28862,7 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#app.database">app.database</a>
- &#8226;   <a href="#sqlalchemy.dialects.sqlite.pysqlite">sqlalchemy.dialects.sqlite.pysqlite</a>
+    <a href="#sqlalchemy.dialects.sqlite.pysqlite">sqlalchemy.dialects.sqlite.pysqlite</a>
  &#8226;   <a href="#sqlite3">sqlite3</a>
  &#8226;   <a href="#sqlite3.__main__">sqlite3.__main__</a>
  &#8226;   <a href="#sqlite3.dbapi2">sqlite3.dbapi2</a>
@@ -29420,7 +29706,7 @@ imported by:
     <a href="#_pyrepl._threading_handler">_pyrepl._threading_handler</a>
  &#8226;   <a href="#_pyrepl.unix_console">_pyrepl.unix_console</a>
  &#8226;   <a href="#_threading_local">_threading_local</a>
- &#8226;   <a href="#app.api">app.api</a>
+ &#8226;   <a href="#app.modules.window">app.modules.window</a>
  &#8226;   <a href="#asyncio.base_events">asyncio.base_events</a>
  &#8226;   <a href="#asyncio.events">asyncio.events</a>
  &#8226;   <a href="#asyncio.mixins">asyncio.mixins</a>
@@ -31618,7 +31904,7 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#app.api">app.api</a>
+    <a href="#app.modules.io">app.modules.io</a>
  &#8226;   <a href="#main.py">main.py</a>
  &#8226;   <a href="#webview.dom">webview.dom</a>
  &#8226;   <a href="#webview.errors">webview.errors</a>
