@@ -18,7 +18,8 @@ function openCellEditor(td, mode) {
     weekStart: weekStart,
     weekEnd: weekEnd,
     mode: mode,
-    unlocked: false
+    unlocked: false,
+    el: td
   };
 
   const editor = document.createElement('div');

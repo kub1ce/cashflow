@@ -125,12 +125,19 @@ async function submitReconcile() {
     
     if (result.success) {
       closeReconcileModal();
-      if (result.action === 'none') {
+      const diff = Math.abs(actualVal - calcVal);
+      if (diff < 0.01) {
+        showToast('Идеально! Балансы совпадают', 'success');
+        if (typeof triggerConfetti !== 'undefined') {
+          triggerConfetti();
+        }
+      } else if (result.action === 'none') {
         showToast('Балансы совпадают', 'info');
       } else {
         showToast('Баланс выровнен', 'success');
-        await reloadData();
       }
+      
+      await reloadData();
     } else {
       showToast('Ошибка: ' + result.error, 'error');
     }

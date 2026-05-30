@@ -100,6 +100,8 @@ window.renderTable = function(data) {
     vc.negativeBalanceColor || '#f87171'
   ));
   refreshAllCommentIcons();
+  initCategorySearch(); 
+  applyCategorySearch(); 
 }
 
 function makeSectionRow(type, weeksCount) {
@@ -448,3 +450,99 @@ function makeBalanceRow(weeks, categories, plans, facts, initialBalance, weekCol
 
   return tr;
 }
+
+window.applyCategorySearch = function() {
+  /**
+   * Применяет текущий фильтр к строкам таблицы.
+   */
+  const searchInput = document.getElementById('category-search');
+  if (!searchInput) return;
+
+  const query = searchInput.value.toLowerCase().trim();
+  const rows = document.querySelectorAll('#table-body tr');
+
+  if (!query) {
+    rows.forEach(row => {
+      if (row.classList.contains('hidden')) {
+        row.classList.remove('hidden');
+        row.classList.remove('search-reveal');
+        void row.offsetWidth;
+        row.classList.add('search-reveal');
+      }
+    });
+    return;
+  }
+
+  let currentGroup = 'unknown';
+  let incomeMatches = 0;
+  let expenseMatches = 0;
+
+  rows.forEach(row => {
+    const nameCell = row.querySelector('td:first-child, th:first-child');
+    if (!nameCell) return;
+    
+    const text = nameCell.textContent.toLowerCase().trim();
+    const isCategory = row.querySelector('[data-category-id]') !== null;
+
+    if (text.includes('итого') && text.includes('доход')) {
+      row.dataset.role = 'income-total';
+    } else if (text.includes('итого') && text.includes('расход')) {
+      row.dataset.role = 'expense-total';
+    } else if (text.includes('остаток') || text.includes('баланс')) {
+      row.dataset.role = 'balance';
+    } else if (!isCategory && text.includes('доход')) {
+      currentGroup = 'income';
+      row.dataset.role = 'income-header';
+    } else if (!isCategory && text.includes('расход')) {
+      currentGroup = 'expense';
+      row.dataset.role = 'expense-header';
+    } else if (isCategory) {
+      row.dataset.role = 'category';
+      if (text.includes(query)) {
+        row.dataset.match = 'true';
+        if (currentGroup === 'income') incomeMatches++;
+        if (currentGroup === 'expense') expenseMatches++;
+      } else {
+        row.dataset.match = 'false';
+      }
+    }
+  });
+
+  rows.forEach(row => {
+    const role = row.dataset.role;
+    let shouldShow = false;
+
+    if (role === 'balance') {
+      shouldShow = true;
+    } else if (role === 'income-header' || role === 'income-total') {
+      shouldShow = incomeMatches > 0;
+    } else if (role === 'expense-header' || role === 'expense-total') {
+      shouldShow = expenseMatches > 0;
+    } else if (role === 'category') {
+      shouldShow = (row.dataset.match === 'true');
+    }
+
+    if (shouldShow) {
+      if (row.classList.contains('hidden')) {
+        row.classList.remove('hidden');
+        row.classList.remove('search-reveal');
+        void row.offsetWidth;
+        row.classList.add('search-reveal');
+      }
+    } else {
+      row.classList.add('hidden');
+      row.classList.remove('search-reveal');
+    }
+  });
+};
+
+window.initCategorySearch = function() {
+  /**
+   * Вешает слушатель на поле поиска.
+   */
+  const searchInput = document.getElementById('category-search');
+  if (!searchInput) return;
+  
+  searchInput.removeEventListener('input', applyCategorySearch);
+  searchInput.addEventListener('input', applyCategorySearch);
+};
