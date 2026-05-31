@@ -385,6 +385,34 @@ window.renderSettingsView = async function() {
           </div>
         </details>
 
+        <details class="group border border-slate-100 rounded-lg overflow-hidden">
+          <summary class="flex items-center justify-between p-4 cursor-pointer 
+                          font-semibold text-slate-700 hover:bg-slate-50 select-none
+                          list-none">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">🔄</span>
+              Начало нового периода
+            </div>
+            <svg class="w-4 h-4 text-slate-400 transition-transform duration-200 
+                        group-open:rotate-180" fill="none" viewBox="0 0 24 24" 
+                stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </summary>
+          <div class="px-4 pb-4 space-y-2 text-slate-600 border-t border-slate-100 pt-3">
+            <p>• <strong>Кнопка «Новый период»</strong> в разделе параметров планирования - для сброса периода</p>
+            <p>• Используется когда вы <strong>исчерпали все 52 недели</strong> текущего периода</p>
+            <p>• При нажатии удаляются <strong>все планы и факты</strong>, но <strong>категории и счёт сохраняются</strong></p>
+            <p>• <strong>Шаг 1:</strong> подтверждение удаления данных</p>
+            <p>• <strong>Шаг 2:</strong> предложение сохранить резервную копию (экспорт, пропуск или отмена)</p>
+            <p>• <strong>Шаг 3:</strong> выбор даты начала нового периода (предлагается следующий понедельник)</p>
+            <p>• <strong>Шаг 4:</strong> финальное подтверждение - требует ввода текста «<strong>НОВЫЙ ПЕРИОД</strong>» для защиты от случайного клика</p>
+            <p>• После сброса таблица <strong>мгновенно обновляется</strong> - перезагрузка страницы не требуется</p>
+            <p>• История действий (Ctrl+Z) очищается при начале нового периода</p>
+            <p>• Рекомендуется экспортировать архив перед началом нового периода</p>
+          </div>
+        </details>
+
       </div>
     </div>`;
 
