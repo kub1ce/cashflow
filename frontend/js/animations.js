@@ -333,8 +333,15 @@ window.switchView = function(view) {
 
   const fromEl = document.getElementById(`view-${fromView}`);
   const toEl   = document.getElementById(`view-${view}`);
+  
+  const headerTools = document.getElementById('header-tools');
 
   Anim.switchView(fromEl, toEl, () => {
+    
+    if (headerTools) {
+      headerTools.style.display = (view === 'dashboard') ? 'flex' : 'none';
+    }
+    
     _originalSwitchView(view);
   }).then(() => {
     if (view === 'settings') {
