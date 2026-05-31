@@ -1,7 +1,8 @@
 import json
+from datetime import date
 
 from app.database import SessionLocal
-from app.models import Settings, Account, Category
+from app.models import Settings, Account, Category, Plan, Fact
 
 
 class SettingsMixin:
@@ -101,6 +102,39 @@ class SettingsMixin:
                 s.financial_strategy = data['financial_strategy']
             if 'visual_config' in data:
                 s.visual_config = json.dumps(data['visual_config'])
+
+            db.commit()
+            return {'success': True}
+        except Exception as e:
+            db.rollback()
+            return {'success': False, 'error': str(e)}
+        finally:
+            db.close()
+
+    def reset_period(self, data: dict) -> dict:
+        """
+        Начинает новый период планирования.
+        Очищает все Plan и Fact записи, обновляет дату начала.
+        Категории, счёт и настройки - не трогает.
+        """
+        db = SessionLocal()
+        try:
+            new_start = data.get('new_start_date')
+            if not new_start:
+                return {'success': False, 'error': 'Не указана дата начала'}
+            
+            try:
+                date.fromisoformat(new_start)
+            except (ValueError, TypeError):
+                return {'success': False, 'error': 'Некорректный формат даты'}
+
+            s = db.query(Settings).first()
+            if not s:
+                return {'success': False, 'error': 'Настройки не найдены'}
+
+            db.query(Plan).delete()
+            db.query(Fact).delete()
+            s.planning_start_date = new_start
 
             db.commit()
             return {'success': True}

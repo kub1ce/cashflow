@@ -90,7 +90,7 @@ async function init() {
 async function reloadData(silent = false) {
   /**
    * Загружает актуальные данные с бэкенда и обновляет стейт.
-   * Если silent = true, процесс происходит без лоадера и без ре-рендера всей таблицы.
+   * Недели всегда регенерируются с текущей planning_start_date.
    */
   const loader = document.getElementById('loader');
   if (!silent) loader?.classList.remove('hidden');
@@ -100,8 +100,16 @@ async function reloadData(silent = false) {
       setTimeout(() => reject(new Error('Timeout')), 10000)
     );
 
-    const data = await Promise.race([
-      pywebview.api.get_cashflow_data(),
+    const settings = await pywebview.api.get_settings();
+    
+    const weeks = generateWeeks(settings?.planning_start_date, 52);
+
+    const [data, categories, account] = await Promise.race([
+      Promise.all([
+        pywebview.api.get_cashflow_data(),
+        pywebview.api.get_categories(),
+        pywebview.api.get_account(),
+      ]),
       timeoutPromise
     ]);
 
@@ -110,7 +118,16 @@ async function reloadData(silent = false) {
       return;
     }
 
-    App.data = data;
+    App.data = {
+      settings: settings,
+      weeks: weeks,
+      plans: data.plans || {},
+      facts: data.facts || {},
+      categories: categories,
+      account: account,
+      initial_balance: account?.initial_balance || 0,
+    };
+
     if (Array.isArray(data.comments)) {
       CellComments = {};
       data.comments.forEach(c => {
@@ -121,7 +138,7 @@ async function reloadData(silent = false) {
     }
 
     if (App.activeView === 'dashboard' && !silent) {
-      renderTable(data);
+      renderTable(App.data);
     }
 
   } catch (e) {

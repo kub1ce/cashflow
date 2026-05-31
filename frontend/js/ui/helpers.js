@@ -714,6 +714,7 @@ function renderEditorBody(isUpdate = false) {
   
   const today = getTodayISO();
   const isPastWeek = App.editing.weekEnd < today;
+  const isFutureWeek = App.editing.weekStart > today;
   const isLocked = isPastWeek && !App.editing.unlocked;
 
   const editorPopup = body.closest('.cell-editor');
@@ -824,6 +825,23 @@ function renderEditorBody(isUpdate = false) {
     }
 
     let bottomHtml = '';
+    if (isFutureWeek) {
+      bottomHtml = `
+        <div class="fact-locked-container">
+          <div class="fact-locked-icon">🔮</div>
+          <div class="fact-locked-text">
+            Будущая неделя.<br>
+            Факты вносятся только в текущем периоде.<br>
+            Используйте вкладку <strong>«План»</strong>.
+          </div>
+        </div>
+      `;
+    } else if (isLocked) {
+      bottomHtml = `...`;
+    } else {
+      bottomHtml = `...`;
+    }
+    
     if (isLocked) {
       bottomHtml = `
         <div class="fact-locked-container">

@@ -74,11 +74,27 @@ window.renderSettingsView = async function() {
             Система будет предлагать покрытие отрицательного остатка за счёт выбранного источника.
           </p>
         </div>
-        <div>
+        <div class="flex items-center justify-between">
           <button onclick="saveMainSettings()"
                   class="btn-settings-primary">
             Сохранить
           </button>
+          
+          <div class="text-right">
+            <p class="text-xs text-slate-400 mb-1.5">
+              Использовали все 52 недели?
+            </p>
+            <button onclick="startNewPeriod()"
+                    style="padding:7px 14px; background:transparent;
+                           color:#ef4444; border:1.5px solid #ef4444;
+                           border-radius:6px; font-size:11px; font-weight:700;
+                           text-transform:uppercase; letter-spacing:0.05em;
+                           cursor:pointer; transition:all 0.15s;"
+                    onmouseover="this.style.background='#fef2f2'"
+                    onmouseout="this.style.background='transparent'">
+              Новый период
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -472,7 +488,8 @@ function renderSettingsCategoryList(cats, container) {
 
 async function saveMainSettings() {
   /**
-   * Сохраняет основные параметры планирования и перезагружает приложение.
+   * Сохраняет основные параметры планирования (дату начала и стратегию)
+   * и перезагружает приложение для применения изменений.
    */
   const startDate = document.getElementById('s-start-date')?.value;
   const strategy  = document.getElementById('s-strategy')?.value;
@@ -494,4 +511,582 @@ async function saveMainSettings() {
   } catch (e) {
     showToast('Ошибка соединения', 'error');
   }
+}
+
+async function startNewPeriod() {
+  /**
+   * Запускает процесс создания нового периода планирования.
+   * Включает подтверждение, экспорт архива, выбор даты и финальную подготовку.
+   */
+  const ok = await showConfirm(
+    'Начать новый период?',
+    'Все планы и факты будут удалены. Категории и счёт сохранятся.'
+  );
+  if (!ok) return;
+
+  const exportChoice = await showExportConfirm();
+  if (exportChoice === 'cancel') return;
+  if (exportChoice === 'export') {
+    await handleExport();
+  }
+
+  const newStartDate = await showNewPeriodDatePicker();
+  if (!newStartDate) return;
+
+  const formattedDate = formatDateForDisplay(newStartDate);
+
+  const confirmed = await showTextConfirm(
+    'Введите "НОВЫЙ ПЕРИОД" для подтверждения',
+    `Все транзакции будут удалены.<br>Новый период начнётся <strong>${formattedDate}</strong>`
+  );
+  if (!confirmed) return;
+
+  try {
+    showToast('⏳ Сбрасываем период...', 'info');
+
+    const result = await pywebview.api.reset_period({
+      new_start_date: newStartDate,
+    });
+
+    if (!result.success) {
+      showToast('Ошибка: ' + result.error, 'error');
+      return;
+    }
+
+    showToast('Новый период создан', 'success');
+    UndoHistory.clear();
+
+    App.data = null;
+    localStorage.removeItem('cached_weeks');
+    sessionStorage.clear();
+
+    switchView('dashboard');
+    
+    setTimeout(async () => {
+      try {
+        const newSettings = await pywebview.api.get_settings();
+        
+        if (!newSettings || !newSettings.planning_start_date) {
+          throw new Error('Не удалось загрузить новые настройки');
+        }
+
+        const newWeeks = generateWeeks(newSettings.planning_start_date, 52);
+
+        const [cashflowData, categories, account] = await Promise.all([
+          pywebview.api.get_cashflow_data(),
+          pywebview.api.get_categories(),
+          pywebview.api.get_account(),
+        ]);
+
+        App.data = {
+          settings: newSettings,
+          weeks: newWeeks,
+          plans: cashflowData.plans || {},
+          facts: cashflowData.facts || {},
+          categories: categories,
+          account: account,
+          initial_balance: account?.initial_balance || 0,
+        };
+
+        CellComments = {};
+
+        renderTable(App.data);
+        
+        const today = getTodayISO();
+        setTimeout(() => scrollToWeek(today), 100);
+
+      } catch (e) {
+        showToast('Ошибка загрузки новых данных: ' + e.message, 'error');
+        console.error('Ошибка:', e);
+      }
+    }, 500);
+
+  } catch (e) {
+    showToast('Ошибка соединения', 'error');
+  }
+}
+
+function showNewPeriodDatePicker() {
+  /**
+   * Диалог выбора даты начала нового периода.
+   * Предлагает следующий понедельник по умолчанию и подсказывает рекомендации.
+   */
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 10002; backdrop-filter: blur(3px);
+    `;
+    overlay.classList.add('np-overlay-enter');
+
+    const isDark = document.body.classList.contains('dark');
+    const box = document.createElement('div');
+    box.classList.add('np-box-enter');
+    box.style.cssText = `
+      background: ${isDark ? '#1e293b' : 'white'};
+      border-radius: 14px; padding: 28px 24px; width: 440px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.25);
+      border: 1px solid ${isDark ? '#334155' : '#f1f5f9'};
+    `;
+
+    const today = getTodayISO();
+    const nextMonday = getNextMonday(today);
+
+    box.innerHTML = `
+      <div class="np-icon"
+           style="font-size:32px; text-align:center;
+                  margin-bottom:14px;">
+        📅
+      </div>
+      <div class="np-title"
+           style="font-size:16px; font-weight:700; text-align:center;
+                  color:${isDark ? '#f1f5f9' : '#0f172a'};
+                  margin-bottom:6px;">
+        Дата начала нового периода
+      </div>
+      <div class="np-subtitle"
+           style="font-size:13px; color:#64748b; text-align:center;
+                  margin-bottom:22px;">
+        С какого дня вы хотите начать новый период планирования?
+      </div>
+      <div class="np-input">
+        <input id="new-period-date" type="date"
+               value="${nextMonday}"
+               style="width:100%; padding:11px 14px;
+                      border:2px solid ${isDark ? '#475569' : '#e2e8f0'};
+                      border-radius:9px; font-size:14px; outline:none;
+                      background:${isDark ? '#0f172a' : '#f8fafc'};
+                      color:${isDark ? '#f1f5f9' : '#0f172a'};
+                      font-family:inherit; box-sizing:border-box;
+                      transition: border-color 0.2s, box-shadow 0.2s;
+                      text-align:center;
+                      accent-color: ${isDark ? '#3b82f6' : '#2563eb'};"/>
+      </div>
+      <div style="margin-top:16px; padding:12px; background:${isDark ? '#0f172a' : '#f8fafc'};
+                  border:1px solid ${isDark ? '#334155' : '#e2e8f0'};
+                  border-radius:8px;">
+        <div style="font-size:11px; font-weight:600;
+                    text-transform:uppercase; letter-spacing:0.05em;
+                    color:${isDark ? '#94a3b8' : '#64748b'};
+                    margin-bottom:4px;">
+          Информация
+        </div>
+        <div style="font-size:12px;
+                    color:${isDark ? '#cbd5e1' : '#475569'};
+                    line-height:1.5;">
+          Рекомендуется начинать период с <strong>понедельника</strong>
+          или первого числа месяца.
+        </div>
+      </div>
+      <div class="np-actions"
+           style="display:flex; gap:10px; margin-top:20px;
+                  justify-content:flex-end;">
+        <button id="date-picker-cancel" style="
+          padding:9px 18px; border-radius:8px; cursor:pointer;
+          background:${isDark ? '#334155' : '#f1f5f9'};
+          color:${isDark ? '#cbd5e1' : '#475569'};
+          border:1px solid ${isDark ? '#475569' : '#e2e8f0'};
+          font-size:13px; font-family:inherit;
+          transition: all 0.15s;">
+          Отмена
+        </button>
+        <button id="date-picker-ok" style="
+          padding:9px 18px; border-radius:8px; cursor:pointer;
+          background:#2563eb; color:white; border:none;
+          font-size:13px; font-weight:600; font-family:inherit;
+          transition: all 0.15s;
+          box-shadow: 0 2px 8px rgba(37,99,235,0.25);">
+          Продолжить →
+        </button>
+      </div>
+    `;
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    const dateInput = document.getElementById('new-period-date');
+    const okBtn = document.getElementById('date-picker-ok');
+    const cancelBtn = document.getElementById('date-picker-cancel');
+
+    _npAddHover('date-picker-ok', {
+      bg: '#1d4ed8',
+      transform: 'translateY(-1px)',
+      shadow: '0 4px 12px rgba(37,99,235,0.35)',
+    });
+    _npAddHover('date-picker-cancel', {
+      bg: isDark ? '#3d4f66' : '#f1f5f9',
+    });
+
+    dateInput.addEventListener('focus', () => {
+      dateInput.style.borderColor = '#3b82f6';
+      dateInput.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.15)';
+    });
+    dateInput.addEventListener('blur', () => {
+      dateInput.style.borderColor = isDark ? '#475569' : '#e2e8f0';
+      dateInput.style.boxShadow = 'none';
+    });
+
+    const cleanup = () => overlay.remove();
+
+    okBtn.addEventListener('click', () => {
+      const selectedDate = dateInput.value;
+      if (!selectedDate) {
+        showToast('Выберите дату', 'error');
+        return;
+      }
+      cleanup();
+      resolve(selectedDate);
+    });
+
+    cancelBtn.addEventListener('click', () => {
+      cleanup();
+      resolve(null);
+    });
+
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) {
+        cleanup();
+        resolve(null);
+      }
+    });
+
+    document.addEventListener('keydown', function handler(e) {
+      if (e.key === 'Escape') {
+        cleanup();
+        resolve(null);
+        document.removeEventListener('keydown', handler);
+      }
+      if (e.key === 'Enter' && dateInput.value) {
+        cleanup();
+        resolve(dateInput.value);
+        document.removeEventListener('keydown', handler);
+      }
+    });
+
+    setTimeout(() => dateInput.focus(), 120);
+  });
+}
+
+function showExportConfirm() {
+  /**
+   * Диалог подтверждения экспорта резервной копии перед сбросом периода.
+   * Предлагает три варианта: экспорт, пропуск или отмена всей операции.
+   */
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 10002; backdrop-filter: blur(3px);
+    `;
+    overlay.classList.add('np-overlay-enter');
+
+    const isDark = document.body.classList.contains('dark');
+    const box = document.createElement('div');
+    box.classList.add('np-box-enter');
+    box.style.cssText = `
+      background: ${isDark ? '#1e293b' : 'white'};
+      border-radius: 14px; padding: 28px 24px; width: 420px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.25);
+      border: 1px solid ${isDark ? '#334155' : '#f1f5f9'};
+    `;
+
+    box.innerHTML = `
+      <div class="np-icon"
+           style="font-size:32px; text-align:center; margin-bottom:14px;
+                  display:block;">
+        💾
+      </div>
+      <div class="np-title"
+           style="font-size:16px; font-weight:700; text-align:center;
+                  color:${isDark ? '#f1f5f9' : '#0f172a'};
+                  margin-bottom:8px;">
+        Сохранить резервную копию?
+      </div>
+      <div class="np-subtitle"
+           style="font-size:13px; color:#64748b; text-align:center;
+                  margin-bottom:24px; line-height:1.6;">
+        Рекомендуется сохранить архив текущих данных<br>
+        перед сбросом периода.
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button id="export-choice-save" class="np-btn-1" style="
+          padding:12px 16px; border-radius:9px; cursor:pointer;
+          background:#2563eb; color:white; border:none;
+          font-size:13px; font-weight:600; font-family:inherit;
+          transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+          box-shadow: 0 2px 8px rgba(37,99,235,0.25);">
+          💾 Сохранить архив и продолжить
+        </button>
+        <button id="export-choice-skip" class="np-btn-2" style="
+          padding:12px 16px; border-radius:9px; cursor:pointer;
+          background:${isDark ? '#334155' : '#f8fafc'};
+          color:${isDark ? '#cbd5e1' : '#475569'};
+          border:1px solid ${isDark ? '#475569' : '#e2e8f0'};
+          font-size:13px; font-weight:500; font-family:inherit;
+          transition: background 0.15s, border-color 0.15s, transform 0.1s;">
+          Пропустить и продолжить без архива
+        </button>
+        <button id="export-choice-cancel" class="np-btn-3" style="
+          padding:10px 16px; border-radius:9px; cursor:pointer;
+          background:transparent; color:#94a3b8; border:none;
+          font-size:12px; font-family:inherit;
+          transition: color 0.15s, transform 0.1s;">
+          Отмена
+        </button>
+      </div>
+    `;
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    _npAddHover('export-choice-save',  { bg: '#1d4ed8', transform: 'translateY(-1px)', shadow: '0 4px 12px rgba(37,99,235,0.35)' });
+    _npAddHover('export-choice-skip',  { bg: isDark ? '#3d4f66' : '#f1f5f9' });
+    _npAddHover('export-choice-cancel',{ color: '#64748b' });
+
+    const cleanup = () => overlay.remove();
+
+    document.getElementById('export-choice-save').addEventListener('click', () => {
+      cleanup(); resolve('export');
+    });
+    document.getElementById('export-choice-skip').addEventListener('click', () => {
+      cleanup(); resolve('skip');
+    });
+    document.getElementById('export-choice-cancel').addEventListener('click', () => {
+      cleanup(); resolve('cancel');
+    });
+
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) { cleanup(); resolve('cancel'); }
+    });
+
+    document.addEventListener('keydown', function handler(e) {
+      if (e.key === 'Escape') {
+        cleanup(); resolve('cancel');
+        document.removeEventListener('keydown', handler);
+      }
+    });
+  });
+}
+
+function showTextConfirm(title, subtitle) {
+  /**
+   * Диалог финального подтверждения с требованием ввода текста "НОВЫЙ ПЕРИОД".
+   * Активирует кнопку подтверждения только при совпадении текста.
+   */
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 10002; backdrop-filter: blur(3px);
+    `;
+    overlay.classList.add('np-overlay-enter');
+
+    const isDark = document.body.classList.contains('dark');
+    const box = document.createElement('div');
+    box.classList.add('np-box-enter');
+    box.style.cssText = `
+      background: ${isDark ? '#1e293b' : 'white'};
+      border-radius: 14px; padding: 28px 24px; width: 420px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.25);
+      border: 1px solid ${isDark ? '#334155' : '#f1f5f9'};
+    `;
+
+    box.innerHTML = `
+      <div class="np-icon"
+           style="font-size:28px; text-align:center;
+                  margin-bottom:12px; display:block;">
+        ⚠️
+      </div>
+      <div class="np-title"
+           style="font-size:15px; font-weight:700;
+                  color:${isDark ? '#f1f5f9' : '#0f172a'};
+                  margin-bottom:6px; text-align:center;">
+        ${title}
+      </div>
+      <div class="np-subtitle"
+           style="font-size:13px; color:#64748b;
+                  margin-bottom:20px; line-height:1.5;
+                  text-align:center;">
+        ${subtitle}
+      </div>
+      <div class="np-input">
+        <input id="text-confirm-input" type="text"
+          placeholder="НОВЫЙ ПЕРИОД"
+          style="width:100%; padding:11px 14px;
+                 border:2px solid ${isDark ? '#475569' : '#e2e8f0'};
+                 border-radius:9px; font-size:14px; outline:none;
+                 background:${isDark ? '#0f172a' : '#f8fafc'};
+                 color:${isDark ? '#f1f5f9' : '#0f172a'};
+                 font-family:inherit; box-sizing:border-box;
+                 transition: border-color 0.2s, box-shadow 0.2s;
+                 text-align:center; letter-spacing:0.05em;"/>
+      </div>
+      <div class="np-actions"
+           style="display:flex; gap:10px; margin-top:16px;
+                  justify-content:flex-end;">
+        <button id="text-confirm-cancel" style="
+          padding:9px 18px; border-radius:8px; cursor:pointer;
+          background:${isDark ? '#334155' : '#f1f5f9'};
+          color:${isDark ? '#cbd5e1' : '#475569'};
+          border:1px solid ${isDark ? '#475569' : '#e2e8f0'};
+          font-size:13px; font-family:inherit;
+          transition: background 0.15s, transform 0.1s;">
+          Отмена
+        </button>
+        <button id="text-confirm-ok" style="
+          padding:9px 18px; border-radius:8px; cursor:pointer;
+          background:#ef4444; color:white; border:none;
+          font-size:13px; font-weight:600; font-family:inherit;
+          opacity:0.4; cursor:not-allowed;
+          transition: opacity 0.2s, transform 0.1s, box-shadow 0.2s;">
+          Подтвердить
+        </button>
+      </div>
+    `;
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    const input  = document.getElementById('text-confirm-input');
+    const okBtn  = document.getElementById('text-confirm-ok');
+    const cancelBtn = document.getElementById('text-confirm-cancel');
+
+    input.addEventListener('focus', () => {
+      input.style.borderColor = '#3b82f6';
+      input.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.15)';
+    });
+    input.addEventListener('blur', () => {
+      input.style.borderColor = isDark ? '#475569' : '#e2e8f0';
+      input.style.boxShadow = 'none';
+    });
+
+    input.addEventListener('input', () => {
+      const valid = input.value.trim() === 'НОВЫЙ ПЕРИОД';
+      okBtn.style.opacity  = valid ? '1'           : '0.4';
+      okBtn.style.cursor   = valid ? 'pointer'     : 'not-allowed';
+
+      if (valid) {
+        okBtn.classList.remove('np-confirm-ready');
+        void okBtn.offsetWidth;
+        okBtn.classList.add('np-confirm-ready');
+      }
+    });
+
+    const cleanup = () => overlay.remove();
+
+    okBtn.addEventListener('click', () => {
+      if (input.value.trim() !== 'НОВЫЙ ПЕРИОД') {
+        input.classList.remove('np-input-shake');
+        void input.offsetWidth;
+        input.classList.add('np-input-shake');
+        setTimeout(() => input.classList.remove('np-input-shake'), 350);
+        return;
+      }
+      cleanup();
+      resolve(true);
+    });
+
+    cancelBtn.addEventListener('click', () => { cleanup(); resolve(false); });
+
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) { cleanup(); resolve(false); }
+    });
+
+    document.addEventListener('keydown', function handler(e) {
+      if (e.key === 'Escape') {
+        cleanup(); resolve(false);
+        document.removeEventListener('keydown', handler);
+      }
+      if (e.key === 'Enter' && input.value.trim() === 'НОВЫЙ ПЕРИОД') {
+        cleanup(); resolve(true);
+        document.removeEventListener('keydown', handler);
+      }
+    });
+
+    setTimeout(() => input.focus(), 120);
+  });
+}
+
+function getNextMonday(dateStr) {
+  /**
+   * Вспомогательная функция: найти следующий понедельник.
+   * Если сегодня понедельник - вернуть понедельник следующей недели.
+   */
+  const date = new Date(dateStr + 'T00:00:00');
+  const day = date.getDay();
+  
+  let daysUntilMonday = (1 - day + 7) % 7;
+  
+  if (daysUntilMonday === 0) daysUntilMonday = 7;
+  
+  const nextMonday = new Date(date);
+  nextMonday.setDate(nextMonday.getDate() + daysUntilMonday);
+  
+  const yyyy = nextMonday.getFullYear();
+  const mm = String(nextMonday.getMonth() + 1).padStart(2, '0');
+  const dd = String(nextMonday.getDate()).padStart(2, '0');
+  
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function formatDateForDisplay(dateStr) {
+  /**
+   * Форматирует дату для красивого отображения пользователю.
+   * Пример: 2026-06-01 → 1 июня 2026 г.
+   */
+  if (!dateStr) return '';
+  
+  const date = new Date(dateStr + 'T00:00:00');
+  
+  const months = [
+    'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+  ];
+  
+  const day = date.getDate();
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+  
+  return `${day} ${month} ${year} г.`;
+}
+
+function _npAddHover(id, over) {
+  /**
+   * Вспомогательная функция: добавляет интерактивные hover-эффекты на кнопку.
+   * Поддерживает изменения фона, цвета, трансформации и тени.
+   */
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  const orig = {
+    bg:        el.style.background,
+    color:     el.style.color,
+    transform: el.style.transform || '',
+    shadow:    el.style.boxShadow || '',
+  };
+
+  el.addEventListener('mouseenter', () => {
+    if (over.bg)        el.style.background  = over.bg;
+    if (over.color)     el.style.color       = over.color;
+    if (over.transform) el.style.transform   = over.transform;
+    if (over.shadow)    el.style.boxShadow   = over.shadow;
+  });
+
+  el.addEventListener('mouseleave', () => {
+    el.style.background  = orig.bg;
+    el.style.color       = orig.color;
+    el.style.transform   = orig.transform;
+    el.style.boxShadow   = orig.shadow;
+  });
+
+  el.addEventListener('mousedown', () => {
+    el.style.transform = 'translateY(0) scale(0.98)';
+  });
+
+  el.addEventListener('mouseup', () => {
+    el.style.transform = over.transform || orig.transform;
+  });
 }

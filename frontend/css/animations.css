@@ -671,3 +671,149 @@ details summary:hover {
 .search-reveal {
   animation: searchReveal 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* New Period Steps Animations */
+
+/* Overlay appears smoothly */
+@keyframes npOverlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Dialogue container - easy lift */
+@keyframes npBoxIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Step icon - springy appearance */
+@keyframes npIconPop {
+  0%   { opacity: 0; transform: scale(0.5) rotate(-8deg); }
+  65%  { opacity: 1; transform: scale(1.1) rotate(3deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+/* Title - slide below */
+@keyframes npTitleIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Description - slide from bottom with delay */
+@keyframes npSubtitleIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Кнопки - появляются снизу вверх */
+@keyframes npButtonIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Input field - soft appearance */
+@keyframes npInputIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Pulse of the confirmation button when it becomes active */
+@keyframes npConfirmReady {
+  0%   { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  60%  { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Shake for invalid input */
+@keyframes npInputShake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-5px); }
+  40%       { transform: translateX(5px); }
+  60%       { transform: translateX(-3px); }
+  80%       { transform: translateX(3px); }
+}
+
+/* Classes for use in JS */
+
+.np-overlay-enter {
+  animation: npOverlayIn 200ms var(--ease-in-out) both;
+}
+
+.np-box-enter {
+  animation: npBoxIn 280ms var(--ease-spring) both;
+}
+
+.np-icon {
+  display: block;
+  animation: npIconPop 400ms var(--ease-spring) both;
+  animation-delay: 60ms;
+}
+
+.np-title {
+  animation: npTitleIn 250ms var(--ease-out) both;
+  animation-delay: 100ms;
+}
+
+.np-subtitle {
+  animation: npSubtitleIn 250ms var(--ease-out) both;
+  animation-delay: 140ms;
+}
+
+/* Buttons with increasing delay */
+
+.np-btn-1 {
+  animation: npButtonIn 220ms var(--ease-out) both;
+  animation-delay: 160ms;
+}
+
+.np-btn-2 {
+  animation: npButtonIn 220ms var(--ease-out) both;
+  animation-delay: 200ms;
+}
+
+.np-btn-3 {
+  animation: npButtonIn 220ms var(--ease-out) both;
+  animation-delay: 230ms;
+}
+
+.np-input {
+  animation: npInputIn 250ms var(--ease-out) both;
+  animation-delay: 160ms;
+}
+
+.np-actions {
+  animation: npButtonIn 220ms var(--ease-out) both;
+  animation-delay: 220ms;
+}
+
+.np-confirm-ready {
+  animation: npConfirmReady 500ms var(--ease-out) forwards;
+}
+
+.np-input-shake {
+  animation: npInputShake 300ms var(--ease-in-out);
+}
+
+/* prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .np-overlay-enter,
+  .np-box-enter,
+  .np-icon,
+  .np-title,
+  .np-subtitle,
+  .np-btn-1,
+  .np-btn-2,
+  .np-btn-3,
+  .np-input,
+  .np-actions {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

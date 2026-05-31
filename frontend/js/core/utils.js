@@ -166,3 +166,32 @@ function pluralMonths(n) {
   if (m10 >= 2 && m10 <= 4) return 'месяца';
   return 'месяцев';
 }
+
+function generateWeeks(startDateStr, weeksCount = 52) {
+  /**
+   * Генерирует массив недель от startDate на количество weeks.
+   */
+  if (!startDateStr) return [];
+
+  const weeks = [];
+  const startDate = new Date(startDateStr + 'T00:00:00');
+
+  for (let i = 0; i < weeksCount; i++) {
+    const weekStart = new Date(startDate);
+    weekStart.setDate(weekStart.getDate() + i * 7);
+
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+
+    const weekStartStr = weekStart.toISOString().split('T')[0];
+    const weekEndStr = weekEnd.toISOString().split('T')[0];
+
+    weeks.push({
+      week_start: weekStartStr,
+      week_end: weekEndStr,
+      week_number: i + 1,
+    });
+  }
+
+  return weeks;
+}

@@ -11,7 +11,9 @@ function openCellEditor(td, mode) {
   const key = `${catId}:${weekStart}`;
   const hasFacts = App.data?.facts?.[key] && App.data.facts[key].length > 0;
   
-  const editorMode = mode || (hasFacts ? 'fact' : 'plan');
+  const today = getTodayISO();
+  const isFutureWeek = weekStart > today;
+  const editorMode = isFutureWeek ? 'plan' : (mode || (hasFacts ? 'fact' : 'plan'));
   
   App.editing = {
     categoryId: catId,
@@ -37,7 +39,10 @@ function openCellEditor(td, mode) {
   editor.innerHTML = `
     <div class="cell-editor-tabs">
       <button class="cell-editor-tab ${editorMode === 'plan' ? 'active' : ''}" data-mode="plan" type="button">План</button>
-      <button class="cell-editor-tab ${editorMode === 'fact' ? 'active' : ''}" data-mode="fact" type="button">Факт</button>
+      <button class="cell-editor-tab ${editorMode === 'fact' ? 'active' : ''}" data-mode="fact" type="button"
+              ${isFutureWeek ? 'disabled style="opacity:0.35;cursor:not-allowed;"' : ''}>
+        Факт
+      </button>
     </div>
     <div id="cell-editor-body"></div>
   `;
@@ -46,6 +51,7 @@ function openCellEditor(td, mode) {
 
   editor.querySelectorAll('.cell-editor-tab').forEach(btn => {
     btn.addEventListener('click', (e) => {
+      if (isFutureWeek && e.target.dataset.mode === 'fact') return;
       App.editing.mode = e.target.dataset.mode;
       editor.className = `cell-editor mode-${App.editing.mode}`;
       editor.querySelectorAll('.cell-editor-tab').forEach(t => t.classList.remove('active'));
