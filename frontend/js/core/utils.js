@@ -16,16 +16,15 @@ function formatAmount(value) {
   return value.toLocaleString('ru-RU', { minimumFractionDigits: 2 });
 }
 
-function getTodayISO() {
+window.getTodayISO = function() {
   /**
    * Возвращает сегодняшнюю дату в формате YYYY-MM-DD.
    */
   const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
+  const offset = d.getTimezoneOffset() * 60000;
+  const localISOTime = (new Date(d - offset)).toISOString().slice(0, 10);
+  return localISOTime;
+};
 
 function getMondayOf(dateStr) {
   /**
@@ -33,8 +32,10 @@ function getMondayOf(dateStr) {
    */
   const d = new Date(dateStr + 'T00:00:00');
   const day = d.getDay();
-  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
-  return d.toISOString().split('T')[0];
+  const diff = day === 0 ? 6 : day - 1;
+  
+  d.setDate(d.getDate() - diff);
+  return d;
 }
 
 function isCurrentWeek(weekStart, weekEnd) {
@@ -167,30 +168,35 @@ function pluralMonths(n) {
   return 'месяцев';
 }
 
-function generateWeeks(startDateStr, weeksCount = 52) {
+window.generateWeeks = function(startDateStr, weeksCount = 52) {
   /**
    * Генерирует массив недель от startDate на количество weeks.
    */
   if (!startDateStr) return [];
 
   const weeks = [];
-  const startDate = new Date(startDateStr + 'T00:00:00');
+  const current = getMondayOf(startDateStr); 
+
+  const getLocalDateString = (d) => {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
 
   for (let i = 0; i < weeksCount; i++) {
-    const weekStart = new Date(startDate);
-    weekStart.setDate(weekStart.getDate() + i * 7);
-
-    const weekEnd = new Date(weekStart);
+    const weekStart = new Date(current);
+    
+    const weekEnd = new Date(current);
     weekEnd.setDate(weekEnd.getDate() + 6);
 
-    const weekStartStr = weekStart.toISOString().split('T')[0];
-    const weekEndStr = weekEnd.toISOString().split('T')[0];
-
     weeks.push({
-      week_start: weekStartStr,
-      week_end: weekEndStr,
+      week_start: getLocalDateString(weekStart),
+      week_end: getLocalDateString(weekEnd),
       week_number: i + 1,
     });
+    
+    current.setDate(current.getDate() + 7);
   }
 
   return weeks;
